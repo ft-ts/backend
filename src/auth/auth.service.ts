@@ -7,6 +7,9 @@ export class AuthService {
   create(createAuthDto: CreateAuthDto) {
     return 'This action adds a new auth';
   }
+  logout() {
+    return 'This action logout';
+  }
 
   findAll() {
     return `This action returns all auth`;

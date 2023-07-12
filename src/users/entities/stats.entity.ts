@@ -26,6 +26,6 @@ export class Stats {
   @Column({ default: 0, nullable: false })
   ladder_points: number;
 
-  @Column({ default: [] })
-  achievements: Array<object>;
+  @Column({ default: '' })
+  achievements: string;
 }
