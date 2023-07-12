@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
-import { ChannelMode } from '../common/enum/channelMode.enum';
+import { ChannelMode } from '../enum/channelMode.enum';
 
 @Entity()
 export class Channel {

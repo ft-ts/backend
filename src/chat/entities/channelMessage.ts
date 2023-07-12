@@ -11,8 +11,8 @@ export class ChannelMessage {
   @Column({ nullable: false })
   channel_id: number;
 
-  @Column({ nullable: false })
-  created_at: Date;
+  @Column({ default: new Date() })
+  timestamp: Date;
 
   @Column({ nullable: false })
   message: string;

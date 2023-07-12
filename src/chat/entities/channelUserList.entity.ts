@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { ChannelRole } from '../common/enum/channelRole.enum';
+import { ChannelRole } from '../enum/channelRole.enum';
 
 @Entity()
 export class ChannelUserList {
