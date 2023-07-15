@@ -1,29 +1,52 @@
-import { Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { AuthRepository } from './auth.repository';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
-  }
-  logout() {
-    return 'This action logout';
-  }
+  constructor(
+    private readonly authRepository: AuthRepository,
+    private readonly jwtService: JwtService,
+  ) {}
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+  async validateUser(userDto): Promise<{ accessToken: string }> {
+    Logger.log('# AuthService validateUser');
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
+    try {
+      const oldUser: User = await this.authRepository.findOneBy({
+        id: userDto.id,
+      });
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
+      if (oldUser) {
+        const accessToken: string = this.jwtService.sign({
+          intraId: userDto.intraId,
+          email: userDto.email,
+        });
+        return { accessToken };
+      }
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+      Logger.log('# User Not Found! Creating New User...');
+
+      const newUser: User = this.authRepository.create({
+        intraId: userDto.intraId,
+        name: userDto.name,
+        email: userDto.email,
+        avatar: userDto.avatar,
+      });
+      this.authRepository.save(newUser);
+      const accessToken = this.jwtService.sign({
+        intraId: newUser.intraId,
+        email: newUser.email,
+      });
+      return { accessToken };
+    } catch (error) {
+      Logger.log('# AuthService validateUser Error');
+      throw new InternalServerErrorException('Something went wrong :(');
+    }
   }
 }
