@@ -4,15 +4,15 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { ChatService } from './chat.service';
-import { CreateChatDto } from './dto/create-chat.dto';
+import { CreateChatMessageDto } from './dto/create-chat-message.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
 
-@WebSocketGateway()
+@WebSocketGateway({ namespace: 'chat' }) // since we have only one gateway, we don't need to specify the namespace
 export class ChatGateway {
   constructor(private readonly chatService: ChatService) {}
 
   @SubscribeMessage('createChat')
-  create(@MessageBody() createChatDto: CreateChatDto) {
+  create(@MessageBody() createChatDto: CreateChatMessageDto) {
     return this.chatService.create(createChatDto);
   }
 
