@@ -1,8 +1,14 @@
-import { CreateDateColumn, Entity, BaseEntity, Index, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  CreateDateColumn,
+  Entity,
+  BaseEntity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { ChatMessage } from './chatMessage.entity';
 
 @Entity()
-export abstract class Channels extends BaseEntity{
+export abstract class Channels extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 

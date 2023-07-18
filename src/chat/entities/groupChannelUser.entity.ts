@@ -1,7 +1,15 @@
-import { Column, Entity, Index, JoinColumn, OneToOne, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { ChannelRole } from '../enum/channelRole.enum';
 import { GroupChannels } from './groupChannels.entity';
-import { Users } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { ChatMessage } from './chatMessage.entity';
 
 @Entity()
@@ -10,9 +18,9 @@ export class GroupChannelUser {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Users, (user) => user.myGroupChannels)
+  @ManyToOne(() => User, (user) => user.myGroupChannels)
   @JoinColumn()
-  user: Users;
+  user: User;
 
   @ManyToOne(() => GroupChannels, (channel) => channel.groupChannelUser)
   @JoinColumn()

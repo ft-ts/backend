@@ -25,11 +25,13 @@ export class ChatService {
   }
 
   async findOne(id: number): Promise<ChatMessage> {
-    return this.chatMessageRepository.findOne({where: {id}});
+    return this.chatMessageRepository.findOne({ where: { id } });
   }
 
   async update(id: number, updateChatDto: UpdateChatDto): Promise<ChatMessage> {
-    const chatMessage = await this.chatMessageRepository.findOne({where: {id}});
+    const chatMessage = await this.chatMessageRepository.findOne({
+      where: { id },
+    });
     if (!chatMessage) {
       throw new NotFoundException('Chat message not found');
     }
@@ -40,7 +42,9 @@ export class ChatService {
   }
 
   async remove(id: number): Promise<void> {
-    const chatMessage = await this.chatMessageRepository.findOne({where: {id}});
+    const chatMessage = await this.chatMessageRepository.findOne({
+      where: { id },
+    });
     if (!chatMessage) {
       throw new NotFoundException('Chat message not found');
     }

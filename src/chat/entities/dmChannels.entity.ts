@@ -1,20 +1,20 @@
-import { Entity, OneToMany, JoinColumn, Index, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Channels } from "./channels.entity";
-import { DmChannelUser } from "./dmChannelUser.entity";
-import { Users } from "../../users/entities/user.entity";
+import { Entity, OneToMany, JoinColumn, Index, ManyToOne } from 'typeorm';
+import { Channels } from './channels.entity';
+import { DmChannelUser } from './dmChannelUser.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity()
-@Index(["userA", "userB"], { unique: true })
+@Index(['userA', 'userB'], { unique: true })
 export class DmChannels extends Channels {
   @OneToMany(() => DmChannelUser, (dmChannelUser) => dmChannelUser.channel)
   @JoinColumn()
   dmChannelUser: DmChannelUser[];
 
-  @ManyToOne(() => Users, { eager: true })
-  @JoinColumn({ name: "userA" })
-  userA: Users;
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn({ name: 'userA' })
+  userA: User;
 
-  @ManyToOne(() => Users, { eager: true })
-  @JoinColumn({ name: "userB" })
-  userB: Users;
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn({ name: 'userB' })
+  userB: User;
 }

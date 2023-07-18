@@ -3,13 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { GroupChannels } from './entities/groupChannels.entity';
 import { GroupChannelUser } from './entities/groupChannelUser.entity';
-import { Users } from '../users/entities/user.entity';
+import { User } from '../users/entities/user.entity';
 import { DmChannelUser } from './entities/dmChannelUser.entity';
 import { CreateGroupChannelDto } from './dto/channel.dto';
 import { ChannelMode } from './enum/channelMode.enum';
 import { ChannelRole } from './enum/channelRole.enum';
 import { DmChannels } from './entities/DmChannels.entity';
-import { MissingPasswordException, NotFoundException, NotAuthorizedException } from './exceptions/chat.exception';
+import {
+  MissingPasswordException,
+  NotFoundException,
+  NotAuthorizedException,
+} from './exceptions/chat.exception';
 
 @Injectable()
 export class GroupChannelService {
@@ -20,7 +24,10 @@ export class GroupChannelService {
     private groupChannelUserRepository: Repository<GroupChannelUser>,
   ) {}
 
-  async createGroupChannel(createGroupChannelDto: CreateGroupChannelDto, creator: Users): Promise<GroupChannels> {
+  async createGroupChannel(
+    createGroupChannelDto: CreateGroupChannelDto,
+    creator: User,
+  ): Promise<GroupChannels> {
     const groupChannel: GroupChannels = new GroupChannels();
     groupChannel.title = createGroupChannelDto.title;
     groupChannel.mode = createGroupChannelDto.mode;
@@ -49,32 +56,40 @@ export class GroupChannelService {
     });
   }
 
-  async getMyGroupChannels(user: Users): Promise<GroupChannels[]> {
+  async getMyGroupChannels(user: User): Promise<GroupChannels[]> {
     const groupChannelUser = await this.groupChannelUserRepository.find({
       where: { user: { id: user.id } },
       relations: ['channel'],
     });
 
-    return groupChannelUser.map(groupChannelUser => groupChannelUser.channel);
+    return groupChannelUser.map((groupChannelUser) => groupChannelUser.channel);
   }
 
   async getGroupChannelById(id: number): Promise<GroupChannels> {
-    const channel = await this.groupChannelsRepository.findOne({where: {id: id}});
+    const channel = await this.groupChannelsRepository.findOne({
+      where: { id: id },
+    });
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
     return channel;
   }
 
-  async enterGroupChannel(user: Users, channelId: number, password: string): Promise<GroupChannels> {
-    const channel = await this.groupChannelsRepository.findOne({where: {id: channelId}});
+  async enterGroupChannel(
+    user: User,
+    channelId: number,
+    password: string,
+  ): Promise<GroupChannels> {
+    const channel = await this.groupChannelsRepository.findOne({
+      where: { id: channelId },
+    });
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
 
     // Check if the user is already in the channel
     const existingUser = await this.groupChannelUserRepository.findOne({
-      where: { user: {id: user.id}, channel: {id: channel.id}},
+      where: { user: { id: user.id }, channel: { id: channel.id } },
     });
     if (existingUser) {
       return channel; // User is already in the channel, no need to take any action
@@ -98,13 +113,14 @@ export class GroupChannelService {
     return channel;
   }
 
-  async getChannelMembers(channelId: number): Promise<Users[]> {
+  async getChannelMembers(channelId: number): Promise<User[]> {
     const channel = await this.groupChannelsRepository.findOne({
-      where: {id: channelId}, relations: ['users']});
+      where: { id: channelId },
+      relations: ['users'],
+    });
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
-  
     return channel.users;
   }
 }
@@ -118,7 +134,7 @@ export class DmChannelService {
     private dmChannelUserRepository: Repository<DmChannelUser>,
   ) {}
 
-  async createDmChannel(userA: Users, userB: Users): Promise<DmChannels> {
+  async createDmChannel(userA: User, userB: User): Promise<DmChannels> {
     const dmChannel: DmChannels = new DmChannels();
     dmChannel.userA = userA;
     dmChannel.userB = userB;
@@ -138,6 +154,3 @@ export class DmChannelService {
     return savedChannel;
   }
 }
-
-
-

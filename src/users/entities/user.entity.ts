@@ -8,6 +8,8 @@ import {
 } from 'typeorm';
 import { UserStatus } from '../enums/userStatus.enum';
 import { Friendship } from './friendship.entity';
+import { DmChannelUser } from '../../chat/entities/dmChannelUser.entity';
+import { GroupChannelUser } from '../../chat/entities/groupChannelUser.entity';
 
 @Entity({ name: 'users' })
 export class User {
@@ -40,4 +42,10 @@ export class User {
 
   @Column({ name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
+
+  @OneToMany(() => DmChannelUser, (channel) => channel.user)
+  myDmChannels: DmChannelUser[];
+
+  @OneToMany(() => GroupChannelUser, (channel) => channel.user)
+  myGroupChannels: GroupChannelUser[];
 }

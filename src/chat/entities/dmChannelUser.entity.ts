@@ -1,6 +1,13 @@
-import { Column, PrimaryGeneratedColumn, Entity, Index, ManyToMany, ManyToOne, OneToMany, OneToOne, JoinColumn } from 'typeorm';
+import {
+  Column,
+  PrimaryGeneratedColumn,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 import { DmChannels } from './dmChannels.entity';
-import { Users } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { ChatMessage } from './chatMessage.entity';
 
 @Entity()
@@ -8,9 +15,9 @@ export class DmChannelUser {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Users, (user) => user.myDmChannels)
+  @ManyToOne(() => User, (user) => user.myDmChannels)
   @JoinColumn()
-  user: Users;
+  user: User;
 
   @ManyToOne(() => DmChannels, (channel) => channel.dmChannelUser)
   @JoinColumn()

@@ -1,9 +1,9 @@
-import { Resolver, Mutation, Args, Context, Query, Int } from "@nestjs/graphql";
-import { GroupChannels } from "./entities/groupChannels.entity";
-import { DmChannels } from "./entities/dmChannels.entity";
-import { DmChannelService, GroupChannelService } from "./channel.service";
-import { CreateGroupChannelDto,  } from "./dto/channel.dto";
-import { Users } from "../users/entities/user.entity";
+import { Resolver, Mutation, Args, Context, Query, Int } from '@nestjs/graphql';
+import { GroupChannels } from './entities/groupChannels.entity';
+import { DmChannels } from './entities/dmChannels.entity';
+import { DmChannelService, GroupChannelService } from './channel.service';
+import { CreateGroupChannelDto } from './dto/channel.dto';
+import { User } from '../users/entities/user.entity';
 
 @Resolver(() => GroupChannels)
 export class GroupChannelResolver {
@@ -11,8 +11,8 @@ export class GroupChannelResolver {
 
   @Mutation(() => GroupChannels)
   async createGroupChannel(
-    @Args("createGroupChannelDto") createGroupChannelDto: CreateGroupChannelDto,
-    @Context("user") user: Users
+    @Args('createGroupChannelDto') createGroupChannelDto: CreateGroupChannelDto,
+    @Context('user') user: User,
   ) {
     return this.channelService.createGroupChannel(createGroupChannelDto, user);
   }
@@ -24,13 +24,15 @@ export class GroupChannelResolver {
 
   @Query(() => [GroupChannels])
   async getMyGroupChannels(
-    @Context('user') user: Users,
+    @Context('user') user: User,
   ): Promise<GroupChannels[]> {
     return this.channelService.getMyGroupChannels(user);
   }
 
   @Query(() => GroupChannels)
-  async getGroupChannelById(@Args('id', { type: () => Int }) id: number): Promise<GroupChannels> {
+  async getGroupChannelById(
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<GroupChannels> {
     return this.channelService.getGroupChannelById(id);
   }
 
@@ -40,22 +42,18 @@ export class GroupChannelResolver {
     @Args('channelId') channelId: number,
     @Args('password', { nullable: true }) password: string,
   ): Promise<GroupChannels> {
-    const user = new Users();
+    const user = new User();
     user.id = userId;
-    
     return this.channelService.enterGroupChannel(user, channelId, password);
   }
 
-  @Query(() => [Users])
-  async getChannelMembers(@Args('channelId', { type: () => Int }) channelId: number): Promise<Users[]> {
+  @Query(() => [User])
+  async getChannelMembers(
+    @Args('channelId', { type: () => Int }) channelId: number,
+  ): Promise<User[]> {
     return this.channelService.getChannelMembers(channelId);
   }
-
 }
-
-
-
-
 
 @Resolver(() => DmChannels)
 export class DmChannelResolver {
@@ -63,8 +61,8 @@ export class DmChannelResolver {
 
   @Mutation(() => DmChannels)
   async createDmChannel(
-    @Args("userA") userA: Users,
-    @Args("userB") userB: Users
+    @Args('userA') userA: User,
+    @Args('userB') userB: User,
   ) {
     return this.channelService.createDmChannel(userA, userB);
   }

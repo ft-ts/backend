@@ -1,6 +1,6 @@
-import { InputType, Field } from "@nestjs/graphql";
-import { IsString, IsInt, IsNotEmpty, IsOptional } from "class-validator";
-import { ChannelMode } from "../enum/channelMode.enum";
+import { InputType, Field } from '@nestjs/graphql';
+import { IsString, IsInt, IsNotEmpty, IsOptional } from 'class-validator';
+import { ChannelMode } from '../enum/channelMode.enum';
 
 @InputType()
 export class CreateGroupChannelDto {
