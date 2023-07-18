@@ -1,13 +1,14 @@
-import { PrimaryGeneratedColumn, Column, Entity } from 'typeorm';
+import { Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { User } from './user.entity';
 
-@Entity()
+@Entity({ name: 'friendships' })
 export class Friendship {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false })
-  send_user_id: number;
+  @ManyToOne(() => User, (user) => user.friendships)
+  user: User;
 
-  @Column({ nullable: false })
-  receive_user_id: number;
+  @ManyToOne(() => User)
+  friend: User;
 }
