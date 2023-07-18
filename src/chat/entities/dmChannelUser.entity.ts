@@ -10,6 +10,7 @@ import { DmChannels } from './dmChannels.entity';
 import { User } from '../../users/entities/user.entity';
 import { ChatMessage } from './chatMessage.entity';
 
+
 @Entity()
 export class DmChannelUser {
   @PrimaryGeneratedColumn()

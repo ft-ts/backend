@@ -20,3 +20,4 @@ export abstract class Channels extends BaseEntity {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: number;
 }
+

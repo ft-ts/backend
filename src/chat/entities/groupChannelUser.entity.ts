@@ -8,9 +8,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ChannelRole } from '../enum/channelRole.enum';
-import { GroupChannels } from './groupChannels.entity';
 import { User } from '../../users/entities/user.entity';
-import { ChatMessage } from './chatMessage.entity';
+import { ChatMessage, GroupChannels } from './internal';
 
 @Entity()
 @Index(['user.id', 'channel.id'], { unique: true })

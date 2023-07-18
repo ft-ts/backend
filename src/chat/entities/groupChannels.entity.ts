@@ -1,12 +1,11 @@
-import { Entity, Column, ManyToMany, JoinTable, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToMany, JoinTable, OneToMany, ChildEntity } from 'typeorm';
 import { ChannelMode } from '../enum/channelMode.enum';
-import { GroupChannelUser } from './groupChannelUser.entity';
-import { Channels } from './channels.entity';
 import { User } from '../../users/entities/user.entity';
+import { Channels, GroupChannelUser } from './internal';
 
 @Entity()
 export class GroupChannels extends Channels {
-  @ManyToMany(() => User, (user) => user.myGroupChannels)
+  @OneToMany(() => User, (user) => user.myGroupChannels)
   @JoinTable()
   users: User[];
 

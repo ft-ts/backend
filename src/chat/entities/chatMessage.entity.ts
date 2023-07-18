@@ -7,8 +7,7 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { Channels } from './channels.entity';
-import { GroupChannelUser } from './groupChannelUser.entity';
+import { Channels, GroupChannelUser } from './internal';
 
 @Entity()
 export class ChatMessage extends BaseEntity {

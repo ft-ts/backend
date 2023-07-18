@@ -1,7 +1,6 @@
 import { Entity, OneToMany, JoinColumn, Index, ManyToOne } from 'typeorm';
-import { Channels } from './channels.entity';
-import { DmChannelUser } from './dmChannelUser.entity';
 import { User } from '../../users/entities/user.entity';
+import { DmChannelUser, Channels } from './internal';
 
 @Entity()
 @Index(['userA', 'userB'], { unique: true })

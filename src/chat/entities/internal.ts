@@ -1,0 +1,6 @@
+export * from './channels.entity'
+export * from './chatMessage.entity'
+export * from './dmChannelUser.entity'
+export * from './dmChannels.entity'
+export * from './groupChannelUser.entity'
+export * from './groupChannels.entity'
