@@ -1,4 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Channels } from '../../chat/entities/channels.entity';
+import { DmChannelUser } from '../../chat/entities/dmChannelUser.entity';
+import { GroupChannelUser } from '../../chat/entities/groupChannelUser.entity';
 
 @Entity()
 export class Users {
@@ -19,4 +22,12 @@ export class Users {
 
   @Column({ nullable: false })
   avatar: string;
+
+  // by sielee
+  @OneToMany(() => DmChannelUser, (channel) => channel.user)
+  myDmChannels: DmChannelUser[];
+
+  @OneToMany(() => GroupChannelUser, (channel) => channel.user)
+  myGroupChannels: GroupChannelUser[];
+
 }
