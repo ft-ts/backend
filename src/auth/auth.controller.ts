@@ -1,59 +1,33 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  ParseIntPipe,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards, Res, Req, Logger } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { AuthGuard } from '@nestjs/passport';
 
-@Controller('auth')
+@Controller('/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('/:id/session')
-  login(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() createAuthDto: CreateAuthDto,
-  ) {
-    return this.authService.create(createAuthDto);
-  }
-
-  @Delete('/:id/session')
-  logout(@Param('id', ParseIntPipe) id: number) {
-    return this.authService.logout();
-  }
-
-  @Post()
-  create(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() createAuthDto: CreateAuthDto,
-  ) {
-    return this.authService.create(createAuthDto);
-  }
-
   @Get()
-  findAll() {
-    return this.authService.findAll();
+  getAuth() {
+    Logger.log('# GET /auth');
+    return '<a href="auth/login">42로그인</a>';
   }
 
-  @Get('/:id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
+  @Get('/login')
+  @UseGuards(AuthGuard('42'))
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  oAuth42() {}
+
+  @Get('/redirect')
+  @UseGuards(AuthGuard('42'))
+  async login(@Res() res, @Req() req) {
+    const { accessToken } = await this.authService.validateUser(req.user);
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
+    res.json({ accessToken });
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+  @Get('/logout')
+  @UseGuards(AuthGuard('jwt'))
+  async logout(@Res() res, @Req() req) {
+    Logger.log('# GET /auth/logout');
   }
 }

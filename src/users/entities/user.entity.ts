@@ -1,33 +1,53 @@
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { UserStatus } from '../enums/userStatus.enum';
+import { Friendship } from './friendship.entity';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Channels } from '../../chat/entities/channels.entity';
 import { DmChannelUser } from '../../chat/entities/dmChannelUser.entity';
 import { GroupChannelUser } from '../../chat/entities/groupChannelUser.entity';
 
-@Entity()
-export class Users {
+@Entity({ name: 'users' })
+export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false, unique: true })
-  intra_id: number;
-
-  @Column({ nullable: false, unique: true })
-  email: string;
+  @Column({ name: 'intra_id', nullable: false, unique: true })
+  intraId: number;
 
   @Column({ nullable: false, unique: true })
   name: string;
 
   @Column({ nullable: false })
-  password: string;
-
-  @Column({ nullable: false })
   avatar: string;
 
-  // by sielee
+  @Column({ nullable: false, unique: true })
+  email: string;
+
+  @Column({ name: 'two_factor_auth', default: false })
+  twoFactorAuth: boolean;
+
+  @OneToMany(() => Friendship, (friendship) => friendship.user)
+  friendships: Friendship[];
+
   @OneToMany(() => DmChannelUser, (channel) => channel.user)
   myDmChannels: DmChannelUser[];
 
   @OneToMany(() => GroupChannelUser, (channel) => channel.user)
   myGroupChannels: GroupChannelUser[];
 
+  @Column({ name: 'status', default: UserStatus.OFFLINE })
+  status: UserStatus;
+
+  @Column({ name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
+
+  @Column({ name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
+  updatedAt: Date;
 }

@@ -1,50 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CreateChatMessageDto } from './dto/create-chat-message.dto';
+import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
-import { ChatMessage } from './entities/chatMessage.entity';
-import { NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class ChatService {
-  constructor(
-    @InjectRepository(ChatMessage)
-    private chatMessageRepository: Repository<ChatMessage>,
-  ) {}
-
-  async create(createChatDto: CreateChatMessageDto): Promise<ChatMessage> {
-    const chatMessage = new ChatMessage();
-    chatMessage.content = createChatDto.content;
-
-    return this.chatMessageRepository.save(chatMessage);
+  create(createChatDto: CreateChatDto) {
+    return 'This action adds a new chat';
   }
 
-  async findAll(): Promise<ChatMessage[]> {
-    return this.chatMessageRepository.find();
+  findAll() {
+    return `This action returns all chat`;
   }
 
-  async findOne(id: number): Promise<ChatMessage> {
-    return this.chatMessageRepository.findOne({where: {id}});
+  findOne(id: number) {
+    return `This action returns a #${id} chat`;
   }
 
-  async update(id: number, updateChatDto: UpdateChatDto): Promise<ChatMessage> {
-    const chatMessage = await this.chatMessageRepository.findOne({where: {id}});
-    if (!chatMessage) {
-      throw new NotFoundException('Chat message not found');
-    }
-
-    chatMessage.content = updateChatDto.content;
-
-    return this.chatMessageRepository.save(chatMessage);
+  update(id: number, updateChatDto: UpdateChatDto) {
+    return `This action updates a #${id} chat`;
   }
 
-  async remove(id: number): Promise<void> {
-    const chatMessage = await this.chatMessageRepository.findOne({where: {id}});
-    if (!chatMessage) {
-      throw new NotFoundException('Chat message not found');
-    }
-
-    await this.chatMessageRepository.remove(chatMessage);
+  remove(id: number) {
+    return `This action removes a #${id} chat`;
   }
 }
