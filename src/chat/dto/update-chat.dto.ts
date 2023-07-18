@@ -1,8 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateChatMessageDto } from './create-chat-message.dto';
-import { Field, Int } from '@nestjs/graphql';
+import { CreateChatDto } from './create-chat.dto';
 
-export class UpdateChatDto extends PartialType(CreateChatMessageDto) {
-  @Field(() => Int)
+export class UpdateChatDto extends PartialType(CreateChatDto) {
   id: number;
 }
