@@ -5,19 +5,16 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
-  UseGuards,
   ParseIntPipe,
-  Req,
-  Res,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { AuthGuard } from '@nestjs/passport';
-import { GetUser } from './decorators/getUser.decorator';
 import { User } from './entities/user.entity';
+import { GetUser } from '../common/decorators';
+import { AtGuard } from 'src/common/guards';
 
+@UseGuards(AtGuard)
 @Controller('users')
-@UseGuards(AuthGuard())
 export class UserController {
   constructor(private readonly usersService: UserService) {}
 

@@ -4,7 +4,9 @@ import { ChatModule } from './chat/chat.module';
 import { PongModule } from './pong/pong.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/auth.config';
-import { UserModule } from './users/user.module';
+import { UserModule } from './user/user.module';
+import { APP_GUARD } from '@nestjs/core';
+import { AtGuard } from './common/guards';
 
 @Module({
   imports: [

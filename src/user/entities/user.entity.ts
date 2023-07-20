@@ -29,11 +29,14 @@ export class User {
   @Column({ name: 'two_factor_auth', default: false })
   twoFactorAuth: boolean;
 
-  @OneToMany(() => Friendship, (friendship) => friendship.user)
+  @OneToMany(() => Friendship, friendship => friendship.user)
   friendships: Friendship[];
 
   @Column({ name: 'status', default: UserStatus.OFFLINE })
   status: UserStatus;
+
+  @Column({ name: 'hashed_rt', nullable: true })
+  hashedRt: string;
 
   @Column({ name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;

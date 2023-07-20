@@ -5,7 +5,7 @@ import { AuthService } from '../auth.service';
 import { VerifiedCallback } from 'passport-jwt';
 
 @Injectable()
-export class FTStrategy extends PassportStrategy(Strategy) {
+export class FTStrategy extends PassportStrategy(Strategy, '42') {
   constructor(private readonly authService: AuthService) {
     super({
       clientID: process.env.CLIENT_ID,

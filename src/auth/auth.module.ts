@@ -8,9 +8,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { jwtConfig } from 'src/config/auth.config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/user/entities/user.entity';
 import { LoggingInterceptor } from './interceptor/logging.interceptor';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { RtStrategy } from './strategies/rt.strategy';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
     FTStrategy,
     AuthRepository,
     JwtStrategy,
+    RtStrategy,
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
