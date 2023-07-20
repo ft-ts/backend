@@ -5,7 +5,7 @@ import { FTStrategy } from './strategies/42.strategy';
 import { AuthRepository } from './auth.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
-import { jwtConfig } from 'src/config/auth.config';
+import { jwtConfig } from 'src/config/ft-ts.config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { User } from 'src/users/entities/user.entity';

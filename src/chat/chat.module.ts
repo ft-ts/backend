@@ -1,25 +1,29 @@
 import { Module } from '@nestjs/common';
 import { ChatService } from './chat.service';
-import { ChatResolver } from './chat.resolver';
 import { ChatGateway } from './chat.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Channels } from './entities/channels.entity';
-import { GroupChannels } from './entities/groupChannels.entity';
+import { Channels } from './entities/channel.entity';
+import { DmChannels } from './entities/internal';
+import { GroupChannels } from './entities/groupChannel.entity';
 import { GroupChannelUser } from './entities/groupChannelUser.entity';
 import { ChatMessage } from './entities/chatMessage.entity';
 import { DmChannelUser } from './entities/dmChannelUser.entity';
-import { GroupChannelService } from './channel.service';
+import { DmChannelService, GroupChannelService } from './channel.service';
+import { DmChannelController, GroupChannelController } from './chat.controller';
+import { ChannelGateway } from './channel.gateway';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Channels,
       GroupChannels,
+      DmChannels,
       DmChannelUser,
       GroupChannelUser,
       ChatMessage,
     ]),
   ],
-  providers: [ChatGateway, ChatService, GroupChannelService, ChatResolver],
+  controllers: [GroupChannelController, DmChannelController],
+  providers: [ChatGateway, ChannelGateway,  ChatService, GroupChannelService, DmChannelService],
 })
 export class ChatModule {}

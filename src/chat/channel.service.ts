@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
-import { GroupChannels } from './entities/groupChannels.entity';
+import { GroupChannels } from './entities/groupChannel.entity';
 import { GroupChannelUser } from './entities/groupChannelUser.entity';
 import { User } from '../users/entities/user.entity';
 import { DmChannelUser } from './entities/dmChannelUser.entity';
 import { CreateGroupChannelDto } from './dto/channel.dto';
 import { ChannelMode } from './enum/channelMode.enum';
 import { ChannelRole } from './enum/channelRole.enum';
-import { DmChannels } from './entities/DmChannels.entity';
+import { DmChannels } from './entities/dmChannel.entity';
 import {
   MissingPasswordException,
   NotFoundException,
@@ -129,7 +129,7 @@ export class GroupChannelService {
 export class DmChannelService {
   constructor(
     @InjectRepository(DmChannels)
-    private dmChannelsRepository: Repository<DmChannels>,
+    private dmChannelRepository: Repository<DmChannels>,
     @InjectRepository(DmChannelUser)
     private dmChannelUserRepository: Repository<DmChannelUser>,
   ) {}
@@ -139,7 +139,7 @@ export class DmChannelService {
     dmChannel.userA = userA;
     dmChannel.userB = userB;
 
-    const savedChannel = await this.dmChannelsRepository.save(dmChannel);
+    const savedChannel = await this.dmChannelRepository.save(dmChannel);
 
     const dmChannelUser1: DmChannelUser = new DmChannelUser();
     dmChannelUser1.user = userA;

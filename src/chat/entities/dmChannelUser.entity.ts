@@ -6,7 +6,7 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { DmChannels } from './dmChannels.entity';
+import { DmChannels } from './dmChannel.entity';
 import { User } from '../../users/entities/user.entity';
 import { ChatMessage } from './chatMessage.entity';
 

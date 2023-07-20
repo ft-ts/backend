@@ -3,8 +3,8 @@ import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { PongModule } from './pong/pong.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { typeOrmConfig } from './config/auth.config';
 import { UserModule } from './users/user.module';
+import { typeOrmConfig } from './config/ft-ts.config';
 
 @Module({
   imports: [
