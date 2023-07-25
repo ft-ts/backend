@@ -1,10 +1,12 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt, VerifiedCallback } from 'passport-jwt';
-import { AuthRepository } from '../auth.repository';
-import { JwtPayload } from '../interfaces/jwtPayload.interface';
+import { JwtPayload } from 'src/login/interfaces/jwtPayload.interface';
 import { User } from 'src/user/entities/user.entity';
 import { UserStatus } from 'src/user/enums/userStatus.enum';
+import { AuthRepository } from '../auth.repository';
+
+const AT_SECRET = process.env.AT_SECRET;
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -12,7 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), // 헤더에서 JWT를 가져옴
       ignoreExpiration: false, // 만료된 JWT의 경우 401 Unauthorized 에러를 발생시킴
-      secretOrKey: process.env.AT_SECRET, // 비밀 키
+      secretOrKey: AT_SECRET, // 비밀 키
     });
   }
 

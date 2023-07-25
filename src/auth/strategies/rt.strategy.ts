@@ -6,10 +6,10 @@ import {
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt, VerifiedCallback } from 'passport-jwt';
 import { Request } from 'express';
-import { JwtPayload } from '../interfaces/jwtPayload.interface';
 import { User } from 'src/user/entities/user.entity';
-import { AuthRepository } from '../auth.repository';
 import { UserStatus } from 'src/user/enums/userStatus.enum';
+import { JwtPayload } from 'src/login/interfaces/jwtPayload.interface';
+import { AuthRepository } from '../auth.repository';
 
 @Injectable()
 export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {

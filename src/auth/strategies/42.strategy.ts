@@ -1,12 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-42';
-import { AuthService } from '../auth.service';
 import { VerifiedCallback } from 'passport-jwt';
 
 @Injectable()
 export class FTStrategy extends PassportStrategy(Strategy, '42') {
-  constructor(private readonly authService: AuthService) {
+  constructor() {
     super({
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
@@ -21,9 +20,10 @@ export class FTStrategy extends PassportStrategy(Strategy, '42') {
     profile: any,
     done: VerifiedCallback,
   ) {
+    Logger.log('# FTStrategy validate');
     const { id, login, email, image } = profile._json;
     done(null, {
-      intraId: id,
+      uid: id,
       name: login,
       email,
       avatar: image.link,

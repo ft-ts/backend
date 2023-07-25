@@ -11,14 +11,19 @@ import {
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
 import { GetUser } from '../common/decorators';
-import { AtGuard } from 'src/common/guards';
+import { AtGuard } from 'src/auth/auth.guard';
 
 @UseGuards(AtGuard)
 @Controller('users')
 export class UserController {
   constructor(private readonly usersService: UserService) {}
 
-  @Patch('/')
+  @Get()
+  findMe(@GetUser() user: User) {
+    return this.usersService.findOne(user.id);
+  }
+
+  @Patch()
   async updateUser(@GetUser() user: User, @Body() body) {
     const result = await this.usersService.updateUser(user, body);
     return result;
