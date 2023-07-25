@@ -8,6 +8,8 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthRepository } from './auth.repository';
 import { User } from 'src/user/entities/user.entity';
 import { UserStatus } from 'src/user/enums/userStatus.enum';
+import { authenticator } from 'otplib';
+import * as QRCode from 'qrcode'
 
 @Injectable()
 export class AuthService {
@@ -64,7 +66,7 @@ export class AuthService {
       return tokens;
     } catch (error) {
       Logger.log('# AuthService validateUser Error', error);
-      throw new InternalServerErrorException('Something went wrong :(');
+      throw new InternalServerErrorException('Something went wrong at validateUser :(');
     }
   }
 
@@ -72,13 +74,17 @@ export class AuthService {
     Logger.log('# AuthService updateRtHash');
 
     try {
+      const _user = await this.authRepository.findOneBy({
+        id: user.id,
+      });
+      if (!_user) throw new ForbiddenException('Access Denied (User Not Found)');
       await this.authRepository.update(user.id, {
         hashedRt,
         status: UserStatus.ONLINE,
       });
     } catch (error) {
       Logger.log('# AuthService updateRtHash Error');
-      throw new InternalServerErrorException('Something went wrong :(');
+      throw new InternalServerErrorException('Something went wrong at updateRtHash :(');
     }
   }
 
@@ -111,4 +117,48 @@ export class AuthService {
     await this.updateRtHash(_user, tokens.refreshToken);
     return tokens;
   }
+
+  generateData(otpURI): Promise<string> {
+    return new Promise((resolve, reject) => {
+      QRCode.toDataURL(otpURI, (err, data) => {
+        if (err) {
+          console.error(err);
+          reject(err);
+        }
+        resolve(data);
+      });
+    });
+  }
+
+  // crypto-js 암호화 필요
+  async createTwoFactorAuth(user: User): Promise<string> {
+    Logger.log('# AuthService twoFactorAuth');
+    let data: string;
+    try {
+      const secret = authenticator.generateSecret();
+      const otpURI = authenticator.keyuri(user.name, process.env.TFA_SECRET, secret);
+      data = await this.generateData(otpURI);
+      if (!data)
+        throw new Error('Something went wrong on 2fa data :(');
+    } catch (error) {
+      Logger.log('# AuthService twoFactorAuth Error', error);
+      throw new InternalServerErrorException('Something went wrong at twoFactorAuth :(');
+    }
+    return data;
+  }
+
+  async verifyTwoFactorAuth(user: User, body: any) {
+    const { code } = body;
+    const secret = process.env.TFA_SECRET;
+    const token = authenticator.generate(secret);
+    console.log(`==================`);
+    console.log(token);
+    console.log(authenticator.generate(secret));
+    console.log(authenticator.generate(code));
+    console.log(`==================`);
+    const isValid = authenticator.verify({ token: code, secret });
+    console.log(isValid);
+    return { message: isValid };
+  }
+
 }

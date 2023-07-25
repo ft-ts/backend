@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Res, Req } from '@nestjs/common';
+import { Controller, Get, UseGuards, Res, Req, Post, Body } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from 'src/common/decorators';
@@ -41,5 +41,17 @@ export class AuthController {
     res.setHeader('access_token', `Bearer ${accessToken}`);
     res.setHeader('refresh_token', `Bearer ${refreshToken}`);
     res.json({ accessToken, refreshToken });
+  }
+
+  @Get('/2fa')
+  @UseGuards(AtGuard)
+  async createTwoFactorAuth(@GetUser() user: User) {
+    return await this.authService.createTwoFactorAuth(user);
+  }
+
+  @Post('/2fa')
+  @UseGuards(AtGuard)
+  async verifyTwoFactorAuth(@GetUser() user: User, @Body() body) {
+    return await this.authService.verifyTwoFactorAuth(user, body);
   }
 }

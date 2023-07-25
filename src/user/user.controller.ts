@@ -30,7 +30,7 @@ export class UserController {
   }
 
   @Get('all')
-  findAll() {
+  findAll(@GetUser() user: User) {
     return this.usersService.findAll();
   }
 
