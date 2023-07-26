@@ -5,23 +5,25 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
-  UseGuards,
   ParseIntPipe,
-  Req,
-  Res,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { AuthGuard } from '@nestjs/passport';
-import { GetUser } from './decorators/getUser.decorator';
 import { User } from './entities/user.entity';
+import { GetUser } from '../common/decorators';
+import { AtGuard } from 'src/auth/auth.guard';
 
+@UseGuards(AtGuard)
 @Controller('users')
-@UseGuards(AuthGuard())
 export class UserController {
   constructor(private readonly usersService: UserService) {}
 
-  @Patch('/')
+  @Get()
+  findMe(@GetUser() user: User) {
+    return this.usersService.findOne(user.id);
+  }
+
+  @Patch()
   async updateUser(@GetUser() user: User, @Body() body) {
     const result = await this.usersService.updateUser(user, body);
     return result;
@@ -33,7 +35,7 @@ export class UserController {
   }
 
   @Get('all')
-  findAll() {
+  findAll(@GetUser() user: User) {
     return this.usersService.findAll();
   }
 

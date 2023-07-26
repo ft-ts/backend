@@ -1,18 +1,30 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { PongModule } from './pong/pong.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/auth.config';
-import { UserModule } from './users/user.module';
+import { UserModule } from './user/user.module';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { LoginModule } from './login/login.module';
+import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
+import { AuthModule } from './auth/auth.module';
+import { AppGateway } from './app.gateway';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(typeOrmConfig),
-    AuthModule,
-    ChatModule,
+    LoginModule,
     UserModule,
+    ChatModule,
     PongModule,
+    AuthModule,
+  ],
+  providers: [
+    AppGateway,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
   ],
 })
 export class AppModule {}

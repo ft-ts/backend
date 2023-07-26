@@ -1,8 +1,6 @@
 import {
   Column,
   Entity,
-  JoinTable,
-  ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -15,7 +13,7 @@ export class User {
   id: number;
 
   @Column({ name: 'intra_id', nullable: false, unique: true })
-  intraId: number;
+  uid: number;
 
   @Column({ nullable: false, unique: true })
   name: string;
@@ -29,11 +27,20 @@ export class User {
   @Column({ name: 'two_factor_auth', default: false })
   twoFactorAuth: boolean;
 
-  @OneToMany(() => Friendship, (friendship) => friendship.user)
+  @OneToMany(() => Friendship, friendship => friendship.user)
   friendships: Friendship[];
 
   @Column({ name: 'status', default: UserStatus.OFFLINE })
   status: UserStatus;
+
+  @Column({ name: 'hashed_rt', nullable: true })
+  hashedRt: string;
+
+  @Column({ name: 'qr_secret', nullable: false })
+  qrSecret: string;
+
+  @Column({ name: 'rating', default: 1000 })
+  rating: number;
 
   @Column({ name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;

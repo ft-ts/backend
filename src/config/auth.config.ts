@@ -24,8 +24,8 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
 };
 
 export const jwtConfig = {
-  secret: process.env.JWT_SECRET,
+  secret: process.env.AT_SECRET,
   signOptions: {
-    expiresIn: process.env.JWT_EXPIRESIN,
+    expiresIn: process.env.AT_EXPIRESIN,
   },
 };
