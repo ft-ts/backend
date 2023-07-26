@@ -7,9 +7,10 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
-import { Channel, ChannelUser } from './internal';
+import { ChannelUser } from './channelUser.entity';
+import { Channel } from '.';
 
-@Entity({ name: 'cm'})
+@Entity({ name: 'cm' })
 export class Cm extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;

@@ -7,6 +7,7 @@ import {
 import { UserStatus } from '../enums/userStatus.enum';
 import { Friendship } from './friendship.entity';
 import { DmUser } from 'src/dm/entities';
+import { ChannelUser } from 'src/channel/entities';
 
 @Entity({ name: 'users' })
 export class User {

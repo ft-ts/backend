@@ -4,15 +4,11 @@ import { CreateGroupChannelDto } from './dto/create-channel.dto';
 import { ChannelMode } from './enum/channelMode.enum';
 import { ChannelRole } from './enum/channelRole.enum';
 import { User } from 'src/user/entities/user.entity';
-import {
-  MissingPasswordException,
-  NotFoundException,
-  NotAuthorizedException,
-} from './exceptions/chat.exception';
 import { ChannelRepository } from './channel.repository';
 import { Channel } from './entities/channel.entity';
-import { ChannelUser } from './entities/internal';
+import { ChannelUser } from './entities';
 import { InjectRepository } from '@nestjs/typeorm';
+import { MissingPasswordException, NotAuthorizedException, NotFoundException } from 'src/common/exceptions/chat.exception';
 
 @Injectable()
 export class ChannelService {

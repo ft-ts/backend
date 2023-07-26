@@ -1,9 +1,9 @@
 import { ConnectedSocket, OnGatewayConnection, SubscribeMessage, WebSocketGateway, WebSocketServer, WsException } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { CreateGroupChannelDto } from './dto/create-channel.dto';
 import { AuthService } from 'src/auth/auth.service';
-import { UnauthorizedException } from './exceptions/authorization.execption';
 import { ChannelService } from './channel.service';
+import { UnauthorizedException } from 'src/common/exceptions/authorization.execption';
+import { CreateGroupChannelDto } from './dto/create-channel.dto';
 
 @WebSocketGateway({
   namespace: 'channels', 

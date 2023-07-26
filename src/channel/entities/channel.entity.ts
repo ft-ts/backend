@@ -1,7 +1,7 @@
 import { Entity, Column, JoinTable, OneToMany, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
 import { ChannelMode } from '../enum/channelMode.enum';
 import { User } from '../../user/entities/user.entity';
-import { ChannelUser, Cm } from './internal';
+import { Cm, ChannelUser } from './';
 
 @Entity()
 export class Channel {

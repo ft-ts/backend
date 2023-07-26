@@ -7,7 +7,7 @@ import { ChannelGateway } from './channel.gateway';
 import { Channel } from './entities/channel.entity';
 import { Cm } from './entities/cm.entity';
 import { ChannelService } from './channel.service';
-import { ChannelUser } from './entities/internal';
+import { ChannelUser } from './entities';
 
 @Module({
   imports: [
