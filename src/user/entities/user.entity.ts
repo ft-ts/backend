@@ -6,6 +6,7 @@ import {
 } from 'typeorm';
 import { UserStatus } from '../enums/userStatus.enum';
 import { Friendship } from './friendship.entity';
+import { DmUser } from 'src/dm/entities';
 
 @Entity({ name: 'users' })
 export class User {
@@ -47,4 +48,10 @@ export class User {
 
   @Column({ name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
+
+  @OneToMany(() => DmUser, (channel) => channel.user)
+  myDmChannels: DmUser[];
+
+  @OneToMany(() => ChannelUser, (channel) => channel.user)
+  myGroupChannels: ChannelUser[];
 }

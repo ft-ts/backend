@@ -24,7 +24,7 @@ export class AuthService {
       }
       catch (err) {
         Logger.error(`# validateToken : ${err}`);
-        throw new UnauthorizedException();;
+        throw new UnauthorizedException();
       }
     }
   }
@@ -52,7 +52,6 @@ export class AuthService {
   }
 
   private getToken(client: Socket) {
-    const { token } = client.handshake.auth;
-    return token;
+    return client.handshake.headers.authorization;
   }
 }
