@@ -14,9 +14,9 @@ export class LoginService {
   ) {}
 
   async getTokens(userInfo: User): Promise<Tokens> {
-    const { uid, email } = userInfo;
+    const { uid, email, twoFactorAuth } = userInfo;
     const tokens = await Promise.all([
-      this.jwtService.signAsync({ uid, email }),
+      this.jwtService.signAsync({ uid, email, twoFactorAuth }),
       this.jwtService.signAsync(
         { uid, email },
         { secret: process.env.RT_SECRET, expiresIn: process.env.RT_EXPIRESIN },
@@ -111,18 +111,6 @@ export class LoginService {
     return tokens;
   }
 
-  generateData(otpURI): Promise<string> {
-    return new Promise((resolve, reject) => {
-      QRCode.toDataURL(otpURI, (err, data) => {
-        if (err) {
-          console.error(err);
-          reject(err);
-        }
-        resolve(data);
-      });
-    });
-  }
-
   async validateOtp(payload: any, code: string) {
     const user = await this.loginRepository.findOneBy({ id: payload.id });
 
@@ -133,37 +121,38 @@ export class LoginService {
     return { message: 'Success' };
   }
 
-
-
-  // crypto-js 암호화 필요
-  async createTwoFactorAuth(user: User): Promise<string> {
-    Logger.log('# AuthService twoFactorAuth');
-    let data: string;
-    try {
-      const secret = authenticator.generateSecret();
-      const otpURI = authenticator.keyuri(user.name, process.env.TFA_SECRET, secret);
-      data = await this.generateData(otpURI);
-      if (!data)
-        throw new Error('Something went wrong on 2fa data :(');
-    } catch (error) {
-      Logger.log('# AuthService twoFactorAuth Error', error);
-      throw new InternalServerErrorException('Something went wrong at twoFactorAuth :(');
-    }
-    return data;
+  generateData(otpURI): Promise<string> {
+    return new Promise((resolve, reject) => {
+      QRCode.toDataURL(otpURI, (err, imgData) => {
+        if (err) reject(err);
+        resolve(imgData);
+      });
+    });
   }
 
-  async verifyTwoFactorAuth(user: User, body: any) {
-    const { code } = body;
-    const secret = process.env.TFA_SECRET;
-    const token = authenticator.generate(secret);
-    console.log(`==================`);
-    console.log(token);
-    console.log(authenticator.generate(secret));
-    console.log(authenticator.generate(code));
-    console.log(`==================`);
-    const isValid = authenticator.verify({ token: code, secret });
-    console.log(isValid);
-    return { message: isValid };
+  async createQRCode(user: User): Promise<string> {
+    Logger.log('# AuthService createQRCode');
+    let data: string;
+    try {
+      const { qrSecret } = await this.loginRepository.findOneBy({ uid: user.uid });
+      const otpURI = authenticator.keyuri(user.uid.toString(), process.env.TFA_SECRET, qrSecret);
+
+      return await this.generateData(otpURI);
+    } catch (error) {
+      Logger.error('# AuthService createQRCode Error', error);
+      throw new InternalServerErrorException('Something went wrong at twoFactorAuth :(');
+    }
+  }
+
+  async validate2FA(userInfo: User, code: string) {
+
+    const user = await this.loginRepository.findOneBy({ uid: userInfo.uid });
+    if (+code !== +authenticator.generate(user.qrSecret)) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
+    await this.loginRepository.update({ uid: user.uid }, { twoFactorAuth: true });
+    const updatedUser = await this.loginRepository.findOneBy({ uid: user.uid });
+    return this.getTokens(updatedUser);
   }
 
 }

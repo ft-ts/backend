@@ -44,13 +44,13 @@ export class LoginController {
 
   @Get('/2fa')
   @UseGuards(AtGuard)
-  async createTwoFactorAuth(@GetUser() user: User) {
-    return await this.loginService.createTwoFactorAuth(user);
+  async createQRCode(@GetUser() user: User) {
+    return await this.loginService.createQRCode(user);
   }
 
   @Post('/2fa')
   @UseGuards(AtGuard)
-  async verifyTwoFactorAuth(@GetUser() user: User, @Body() body) {
-    return await this.loginService.verifyTwoFactorAuth(user, body);
+  async validate2FA(@GetUser() user: User, @Body() body) {
+    return await this.loginService.validate2FA(user, body.code);
   }
 }

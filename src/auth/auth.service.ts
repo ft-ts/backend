@@ -18,7 +18,7 @@ export class AuthService {
     }
     catch (err) {
       try {
-        Logger.warn(`# validateToken: vaildate refresh token`);
+        Logger.warn(`# validateToken: try to access with refresh token`);
         const payload: any = this.jwtService.verify(jwtToken, { secret: process.env.RT_SECRET });
         return payload;
       }
