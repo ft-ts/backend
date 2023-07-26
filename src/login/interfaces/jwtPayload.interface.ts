@@ -1,6 +1,6 @@
 export interface JwtPayload {
   id: number;
-  intraId: number;
+  uid: number;
   email: string;
   twoFactorAuth: boolean;
 }

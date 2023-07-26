@@ -16,8 +16,8 @@ export class UserService {
   ) {}
 
   async updateUser(user: User, body) {
-    if (body.intraId || body.email)
-      throw new BadRequestException('Cannot change intraId or email');
+    if (body.uid || body.email)
+      throw new BadRequestException('Cannot change uid or email');
 
     // email, avatar, status 유효성 검사
     if (body.name.length < 4 || body.name.length > 20)
@@ -28,6 +28,10 @@ export class UserService {
   }
 
   async addUser(body) {
+    const existingUser = await this.usersRepository.findOneBy({
+      email: body.email,
+    });
+    if (existingUser) throw new BadRequestException('User already exists');
     await this.usersRepository.create(body);
     return await this.usersRepository.save(body);
   }
@@ -57,9 +61,9 @@ export class UserService {
     }));
   }
 
-  async findOne(id: number) {
-    const user = await this.usersRepository.findOneBy({ id });
-    if (!user) throw new NotFoundException(`User ${id} not found`);
+  async findOne(uid: number) {
+    const user = await this.usersRepository.findOneBy({ uid });
+    if (!user) throw new NotFoundException(`User ${uid} not found`);
     return {
       name: user.name,
       email: user.email,

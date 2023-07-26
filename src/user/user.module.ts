@@ -8,12 +8,14 @@ import { FriendshipRepository } from './repositories/friendship.repository';
 import { UserRepository } from './repositories/user.repository';
 import { Friendship } from './entities/friendship.entity';
 import { JwtModule } from '@nestjs/jwt';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     TypeOrmModule.forFeature([User, Friendship]),
     JwtModule,
+    AuthModule,
   ],
   controllers: [UserController],
   providers: [UserService, UserRepository, FriendshipRepository],
