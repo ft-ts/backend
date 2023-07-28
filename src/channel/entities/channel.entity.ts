@@ -15,11 +15,7 @@ export class Channel {
   chatMessage: Cm[];
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: number;
-
-  @OneToMany(() => User, (user) => user.myGroupChannels)
-  @JoinTable()
-  users: User[];
+  createdAt: Date;
 
   @OneToMany(
     () => ChannelUser,

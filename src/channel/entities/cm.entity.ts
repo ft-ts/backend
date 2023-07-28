@@ -25,5 +25,5 @@ export class Cm extends BaseEntity {
   content: string;
 
   @CreateDateColumn()
-  timeStamp: number;
+  timeStamp: Date;
 }

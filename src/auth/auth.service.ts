@@ -1,6 +1,7 @@
 import {
-  Injectable, Logger, UnauthorizedException,
+  Injectable, Logger,
 } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common/exceptions/unauthorized.exception';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { Socket } from 'socket.io';
@@ -12,6 +13,8 @@ export class AuthService {
   ) { }
 
   validateToken(jwtToken: any) {
+    console.log(jwtToken);
+    
     try {
       const payload: any = this.jwtService.verify(jwtToken);
       return payload;
@@ -24,7 +27,7 @@ export class AuthService {
       }
       catch (err) {
         Logger.error(`# validateToken : ${err}`);
-        throw new UnauthorizedException();
+        throw new UnauthorizedException('Invalid token');
       }
     }
   }
@@ -48,6 +51,7 @@ export class AuthService {
       return false;
     }
     const payload = this.validateToken(token);
+    console.log(payload);
     return true;
   }
 

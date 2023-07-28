@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsOptional, IsEnum, IsInt } from 'class-validator';
 import { ChannelMode } from '../enum/channelMode.enum';
 
-export class CreateGroupChannelDto {
+export class CreateChannelDto {
   @IsNotEmpty()
   @IsString()
   title: string;
@@ -13,12 +13,4 @@ export class CreateGroupChannelDto {
   @IsOptional()
   @IsString()
   password: string;
-}
-
-export class CreateDmChannelDto {
-  @IsInt()
-  userAId: number;
-
-  @IsInt()
-  userBId: number;
 }

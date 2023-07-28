@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
+import { runChannelSocketClient } from './channel-socket-client';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,5 +14,9 @@ async function bootstrap() {
   await app.listen(port);
 
   Logger.log(`App running on port ${port}`);
+
+
+  runChannelSocketClient();
+  
 }
 bootstrap();
