@@ -9,6 +9,6 @@ export class Friendship {
   @ManyToOne(() => User, (user) => user.friendships)
   user: User;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, (user) => user.friendships)
   friend: User;
 }
