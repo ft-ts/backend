@@ -9,6 +9,7 @@ import { LoginModule } from './login/login.module';
 import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
 import { AuthModule } from './auth/auth.module';
 import { AppGateway } from './app.gateway';
+import { DmModule } from './dm/dm.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AppGateway } from './app.gateway';
     ChatModule,
     PongModule,
     AuthModule,
+    DmModule,
   ],
   providers: [
     AppGateway,

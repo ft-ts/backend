@@ -11,6 +11,7 @@ import { User } from 'src/user/entities/user.entity';
       DM, User,
     ]),
   ],
-  providers: [DmGateway, DmService]
+  providers: [DmGateway, DmService],
+  // exports: [DmService, DmGateway],
 })
 export class DmModule {}

@@ -43,7 +43,7 @@ export class AppGateway {
     const user = await this.authService.validateToken(token);
     if (user == null || user == undefined)
       throw new WsException('잘못된 사용자입니다.');
-    console.log(this.sockets);
+    console.log('this.sockets', this.sockets);
     const isExist = this.sockets.has(user.uid);
 
     client.emit('login/isExist', isExist);
@@ -62,6 +62,6 @@ export class AppGateway {
     
   @SubscribeMessage('message')
   handleMessage(client: Socket, payload: any) {
-    console.log(payload);
+    console.log('message', payload);
   }
 }
