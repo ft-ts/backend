@@ -1,4 +1,3 @@
-// socket-client.ts
 import { io } from 'socket.io-client';
 
 export function runChannelSocketClient() {
@@ -6,11 +5,31 @@ export function runChannelSocketClient() {
 
   socket.on('connect', () => {
     console.log('Connected to server');
+
   });
 
   socket.on('channelEntered', (data) => {
     const channelId = data.channelId;
-    console.log('Entered channel with ID:', channelId);
+
     window.location.href = `/channels/${channelId}`;
   });
+
+  socket.on('getAllChannels', (data) => {
+    console.log('All channels:', data);
+  });
+
+  socket.on('getMyChannels', (data) => {
+    console.log('My channels:', data);
+  });
+
+  socket.on('newMessage', (data) => {
+    console.log('Message received:', data);
+  }
+  );
+
+  socket.on('editChannel', (data) => {
+    console.log('Channel edited:', data);
+  });
+  
+
 }

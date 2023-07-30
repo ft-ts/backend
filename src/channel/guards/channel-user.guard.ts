@@ -1,17 +1,20 @@
-
+// channel-user.guard.ts
 
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ChannelService } from '../channel.service';
 import { NotFoundException } from 'src/common/exceptions/chat.exception';
 
 @Injectable()
-export class ChannelAuthGuard implements CanActivate {
+export class ChannelUserGuard implements CanActivate {
   constructor(private readonly channelService: ChannelService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    const channelId = +request.params.channelId; // Assuming channelId is a route parameter
+
+    const user = await this.channelService.getAuthenticatedUser(request.data.uid);
+    console.log('user', user);
+    const channelId = request.channelId;
+    console.log('channelId', channelId);
 
     const channel = await this.channelService.getChannelById(channelId);
     if (!channel) {

@@ -1,27 +1,14 @@
-import { Entity, Column, JoinTable, OneToMany, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany } from 'typeorm';
 import { ChannelMode } from '../enum/channelMode.enum';
-import { User } from '../../user/entities/user.entity';
-import { Cm, ChannelUser } from './';
+import { ChannelUser } from './channelUser.entity';
 
 @Entity()
 export class Channel {
-  
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToMany(() => Cm, (message) => message.channel, {
-    cascade: ['insert', 'remove', 'update'],
-  })
-  chatMessage: Cm[];
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @OneToMany(
-    () => ChannelUser,
-    (groupChannelUser) => groupChannelUser.channel,
-  )
-  groupChannelUser: ChannelUser[];
+  @OneToMany(() => ChannelUser, (channelUser) => channelUser.channel)
+  channelUser: ChannelUser[];
 
   @Column({ nullable: false })
   title: string;
@@ -31,4 +18,7 @@ export class Channel {
 
   @Column({ nullable: true })
   password: string;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 }

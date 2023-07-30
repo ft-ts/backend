@@ -6,6 +6,12 @@ export class MissingPasswordException extends BadRequestException {
   }
 }
 
+export class InvalidPasswordException extends BadRequestException {
+  constructor() {
+    super('Invalid Password.');
+  }
+}
+
 export class NotFoundException extends HttpException {
   constructor(message: string) {
     super(message, HttpStatus.NOT_FOUND);

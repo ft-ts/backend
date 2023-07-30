@@ -53,6 +53,6 @@ export class User {
   @OneToMany(() => DmUser, (channel) => channel.user)
   myDmChannels: DmUser[];
 
-  @OneToMany(() => ChannelUser, (channel) => channel.user)
-  myGroupChannels: ChannelUser[];
+  @OneToMany(() => ChannelUser, (channelUser) => channelUser.user)
+  myChannels: ChannelUser[];
 }
