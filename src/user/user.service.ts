@@ -27,15 +27,6 @@ export class UserService {
     return await this.usersRepository.findOneBy({ id: user.id });
   }
 
-  async addUser(body) {
-    const existingUser = await this.usersRepository.findOneBy({
-      email: body.email,
-    });
-    if (existingUser) throw new BadRequestException('User already exists');
-    await this.usersRepository.create(body);
-    return await this.usersRepository.save(body);
-  }
-
   async findAll() {
     return await this.usersRepository.find();
   }

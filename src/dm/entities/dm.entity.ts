@@ -26,14 +26,14 @@ export class DM extends BaseEntity {
   @Column({ nullable: false })
   message: string;
 
-  @Column({ nullable: false })
+  @Column({ nullable: false, default: DmType.DM })
   type: DmType;
 
-  @Column()
+  @Column({ nullable: true, default: "" })
   data: string;
 
-  @Column({ name: 'read_at' })
-  readAt: Date;
+  @Column({ name: 'viewed', default: false })
+  viewed: boolean;
 
   @Column({ name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;

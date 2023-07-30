@@ -11,7 +11,7 @@ export class LoginService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly loginRepository: LoginRepository,
-  ) {}
+  ) { }
 
   async getTokens(userInfo: User): Promise<Tokens> {
     const { uid, email, twoFactorAuth } = userInfo;
@@ -155,4 +155,66 @@ export class LoginService {
     return this.getTokens(updatedUser);
   }
 
+
+
+
+
+
+  /**
+   * 🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮
+   * 
+   * For TEST !!!!!!!!
+   * 
+   * 🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮
+   */
+  async getDemoTokens(userInfo: User): Promise<Tokens> {
+    const { uid, email, twoFactorAuth } = userInfo;
+    const tokens = await Promise.all([
+      this.jwtService.signAsync({ uid, email, twoFactorAuth }, { expiresIn: '12h' }),
+      this.jwtService.signAsync(
+        { uid, email },
+        { secret: process.env.RT_SECRET, expiresIn: '30d' },
+      ),
+    ]);
+
+    return {
+      accessToken: tokens[0],
+      refreshToken: tokens[1],
+    };
+  }
+
+  async loginByDemoUser(userInfo: User): Promise<Tokens> {
+    Logger.log('# AuthService loginBy "🤮Demo" User');
+
+    try {
+      const existUser: User = await this.loginRepository.findOneBy({
+        uid: userInfo.uid,
+      });
+
+      if (existUser) {
+        const tokens: Tokens = await this.getTokens(existUser);
+        await this.updateRefreshToken(existUser, tokens.refreshToken);
+
+        return tokens;
+      }
+      Logger.warn('# User Not Found! Creating New "🤮Demo" User...');
+
+      const newUser: User = this.loginRepository.create({
+        uid: userInfo.uid,
+        name: userInfo.name,
+        email: userInfo.email,
+        avatar: userInfo.avatar,
+        qrSecret: authenticator.generateSecret(),
+      });
+
+      await this.loginRepository.save(newUser);
+      const tokens: Tokens = await this.getTokens(newUser);
+      await this.updateRefreshToken(newUser, tokens.refreshToken);
+
+      return tokens;
+    } catch (error) {
+      Logger.log('# AuthService loginBy "🤮Demo" User Error', error);
+      throw new InternalServerErrorException('Something went wrong at validate "🤮Demo" User :(');
+    }
+  }
 }

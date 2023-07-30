@@ -29,11 +29,6 @@ export class UserController {
     return result;
   }
 
-  @Post('add')
-  addUser(@Body() body) {
-    return this.usersService.addUser(body);
-  }
-
   @Get('all')
   findAll(@GetUser() user: User) {
     return this.usersService.findAll();

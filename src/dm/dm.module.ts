@@ -4,13 +4,17 @@ import { DmGateway } from './dm.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DM } from './entities/dm.entity';
 import { User } from 'src/user/entities/user.entity';
+import { AuthModule } from 'src/auth/auth.module';
+import { DmController } from './dm.controller';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       DM, User,
     ]),
+    AuthModule,
   ],
+  controllers: [DmController],
   providers: [DmGateway, DmService],
   // exports: [DmService, DmGateway],
 })
