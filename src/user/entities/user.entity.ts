@@ -54,4 +54,7 @@ export class User {
 
   @Column({ name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
+
+  @OneToMany(() => ChannelUser, (channelUser) => channelUser.user)
+  myChannels: ChannelUser[];
 }
