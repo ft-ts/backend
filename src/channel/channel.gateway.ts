@@ -23,7 +23,7 @@ export class ChannelGateway {
   server: Server;
 
   async handleConnection(client: Socket) {
-    const payload = await this.authService.validateToken(client.handshake.headers.authorization);
+    const payload = await this.authService.validateAccessToken(client.handshake.headers.authorization);
     if (!payload) {
       client.disconnect(true);
       return;
