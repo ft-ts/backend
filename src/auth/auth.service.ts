@@ -1,7 +1,8 @@
 import {
   ForbiddenException,
-  Injectable, Logger, UnauthorizedException,
+  Injectable, Logger,
 } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common/exceptions/unauthorized.exception';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { Socket } from 'socket.io';

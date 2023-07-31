@@ -7,6 +7,7 @@ import {
 import { UserStatus } from '../enums/userStatus.enum';
 import { Friendship } from './friendship.entity';
 import { DM } from 'src/dm/entities/dm.entity';
+import { ChannelUser } from 'src/channel/entities';
 
 @Entity({ name: 'users' })
 export class User {
@@ -54,4 +55,7 @@ export class User {
 
   @Column({ name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
+
+  @OneToMany(() => ChannelUser, (channelUser) => channelUser.user)
+  myChannels: ChannelUser[];
 }

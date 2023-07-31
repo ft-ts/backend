@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ChatModule } from './chat/chat.module';
 import { PongModule } from './pong/pong.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/auth.config';
@@ -10,13 +9,14 @@ import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
 import { AuthModule } from './auth/auth.module';
 import { AppGateway } from './app.gateway';
 import { DmModule } from './dm/dm.module';
+import { ChannelModule } from './channel/channel.module';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(typeOrmConfig),
     LoginModule,
     UserModule,
-    ChatModule,
+    ChannelModule,
     PongModule,
     AuthModule,
     DmModule,
