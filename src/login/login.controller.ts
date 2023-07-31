@@ -5,6 +5,7 @@ import { Response } from 'express';
 import { GetUser } from 'src/common/decorators';
 import { AuthGuard } from '@nestjs/passport';
 import { AtGuard } from 'src/auth/auth.guard';
+import { RtGuard } from 'src/auth/rt.guard';
 
 @Controller('login')
 export class LoginController {
@@ -32,7 +33,7 @@ export class LoginController {
   }
 
   @Get('/refresh')
-  @UseGuards(AtGuard)
+  @UseGuards(RtGuard)
   async refreshToken(@GetUser() user: User, @Res() res) {
     const { accessToken, refreshToken } = await this.loginService.refreshTokens(
       user,
@@ -52,5 +53,13 @@ export class LoginController {
   @UseGuards(AtGuard)
   async validate2FA(@GetUser() user: User, @Body() body) {
     return await this.loginService.validate2FA(user, body.code);
+  }
+
+  @Post('/addDemoUser')
+  async loginByDemoUser(@Res() res: Response, @Body() user: User) {
+    const { accessToken, refreshToken } = await this.loginService.loginByDemoUser(user);
+    res.setHeader('access_token', `Bearer ${accessToken}`);
+    res.setHeader('refresh_token', `Bearer ${refreshToken}`);
+    res.json({ accessToken, refreshToken });
   }
 }

@@ -2,34 +2,66 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
-import { DmChannel, DmUser } from './entities';
+import { DM } from './entities/dm.entity';
+import { Socket } from 'socket.io';
+
+enum DmType {
+  DM,
+  NOTIFICATION,
+}
 
 @Injectable()
 export class DmService {
   constructor(
-    @InjectRepository(DmChannel)
-    private dmRepository: Repository<DmChannel>,
-    @InjectRepository(DmUser)
-    private dmUserRepository: Repository<DmUser>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    @InjectRepository(DM)
+    private dmRepository: Repository<DM>,
   ) {}
 
-  async createDmChannel(userA: User, userB: User): Promise<DmChannel> {
-    const dmChannel: DmChannel = new DmChannel();
-    dmChannel.userA = userA;
-    dmChannel.userB = userB;
-
-    const savedGroupChannel = await this.dmRepository.save(dmChannel);
-
-    const dmChannelUser1: DmUser = new DmUser();
-    dmChannelUser1.user = userA;
-    dmChannelUser1.channel = savedGroupChannel;
-    await this.dmUserRepository.save(dmChannelUser1);
-
-    const dmChannelUser2: DmUser = new DmUser();
-    dmChannelUser2.user = userB;
-    dmChannelUser2.channel = savedGroupChannel;
-    await this.dmUserRepository.save(dmChannelUser2);
-
-    return savedGroupChannel;
+  async saveDmLog(payload: any) {
+    console.log('dm/saveDmLog', payload);
+    const dm = this.dmRepository.create(
+      {
+        sender : await this.userRepository.findOneBy({ uid : payload.senderUid}),
+        receiver : await this.userRepository.findOneBy({ uid : payload.receiverUid }),
+        message : payload.message,
+        createdAt : new Date(),
+      }
+    );
+    return await this.dmRepository.save(dm);
   }
+
+  async getAllDmLog(userUid: number) {
+    const result = await this.dmRepository
+    .createQueryBuilder('dm')
+    .leftJoinAndSelect('dm.sender', 'sender')
+    .leftJoinAndSelect('dm.receiver', 'receiver')
+    .select(['dm.id', 'dm.message', 'dm.createdAt', 'dm.viewed', 'dm.type', 'sender.name', 'sender.uid', 'receiver.name', 'receiver.uid'])
+    .where('sender.uid = :uid', { uid : userUid })
+    .orWhere('receiver.uid = :uid', { uid : userUid })
+    .orderBy('dm.createdAt', 'DESC')
+    .getMany();
+    return result;
+  }
+
+  async getDMLogBetween(userUid: number, targetName: string) {
+    const target = await this.userRepository.findOneBy({ name : targetName });
+    if (!target) {
+      return null;
+    }
+    const result = await this.dmRepository
+    .createQueryBuilder('dm')
+    .leftJoinAndSelect('dm.sender', 'sender')
+    .leftJoinAndSelect('dm.receiver', 'receiver')
+    .select(['dm.id', 'dm.message', 'dm.createdAt', 'dm.viewed', 'dm.type', 'sender.name', 'sender.uid', 'receiver.name', 'receiver.uid'])
+    .where('sender.uid = :uid', { uid : userUid })
+    .andWhere('receiver.uid = :targetUid', { targetUid : target.uid })
+    .orWhere('sender.uid = :targetUid', { targetUid : target.uid })
+    .andWhere('receiver.uid = :uid', { uid : userUid })
+    .orderBy('dm.createdAt', 'DESC')
+    .getMany();
+    return result;
+  }
+
 }

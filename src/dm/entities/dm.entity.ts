@@ -4,26 +4,37 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   BaseEntity,
-  CreateDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
-import { DmUser } from './dmUser.entity';
-import { DmChannel } from './dmChannel.entity';
 
-@Entity({ name: 'dm' })
-export class Dm extends BaseEntity {
+enum DmType {
+  DM,
+  NOTIFICATION,
+}
+
+@Entity({ name: 'DM' })
+export class DM extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => DmUser, (groupChannelUser) => groupChannelUser.user)
-  user: User;
+  @ManyToOne(() => User, (user) => user.sentDms)
+  sender: User;
 
-  @ManyToOne(() => DmChannel, (channel) => channel.chatMessage)
-  channel: DmChannel;
+  @ManyToOne(() => User, (user) => user.receiveDms)
+  receiver: User;
 
-  @Column('text', { nullable: false })
-  content: string;
+  @Column({ nullable: false })
+  message: string;
 
-  @CreateDateColumn()
-  timeStamp: number;
+  @Column({ nullable: false, default: DmType.DM })
+  type: DmType;
+
+  @Column({ nullable: true, default: "" })
+  data: string;
+
+  @Column({ name: 'viewed', default: false })
+  viewed: boolean;
+
+  @Column({ name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
 }

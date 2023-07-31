@@ -2,16 +2,20 @@ import { Module } from '@nestjs/common';
 import { DmService } from './dm.service';
 import { DmGateway } from './dm.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Dm, DmChannel, DmUser } from './entities';
+import { DM } from './entities/dm.entity';
+import { User } from 'src/user/entities/user.entity';
+import { AuthModule } from 'src/auth/auth.module';
+import { DmController } from './dm.controller';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      DmChannel,
-      DmUser,
-      Dm,
+      DM, User,
     ]),
+    AuthModule,
   ],
-  providers: [DmGateway, DmService]
+  controllers: [DmController],
+  providers: [DmGateway, DmService],
+  // exports: [DmService, DmGateway],
 })
 export class DmModule {}

@@ -9,8 +9,6 @@ import { AuthService } from "./auth/auth.service";
     origin: process.env.FRONT_PORT,
   },
 })
-// @UsePipes(new WsValidationPipe())
-// @UseFilters(new WsExceptionFilter())
 export class AppGateway {
   constructor(private readonly authService: AuthService) {}
 
@@ -39,11 +37,11 @@ export class AppGateway {
   }
 
   private async validateUser(client: Socket) {
-    const token = this.getToken(client);
-    const user = await this.authService.validateToken(token);
+    const token = client.handshake.headers.authorization;
+    const user = await this.authService.validateAccessToken(token);
     if (user == null || user == undefined)
       throw new WsException('잘못된 사용자입니다.');
-    console.log(this.sockets);
+    console.log('this.sockets', this.sockets);
     const isExist = this.sockets.has(user.uid);
 
     client.emit('login/isExist', isExist);
@@ -53,15 +51,5 @@ export class AppGateway {
     }
     this.sockets.add(user.uid);
     client.data = { uid: user.uid };
-  }
-
-  private getToken(client: Socket) {
-    return client.handshake.headers.authorization;
-  }
-
-    
-  @SubscribeMessage('message')
-  handleMessage(client: Socket, payload: any) {
-    console.log(payload);
   }
 }
