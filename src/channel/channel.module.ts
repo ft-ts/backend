@@ -8,7 +8,6 @@ import { Cm } from './entities/cm.entity';
 import { ChannelService } from './channel.service';
 import { ChannelUser } from './entities';
 import { ChannelUserGuard } from './guards/channel-user.guard';
-import { ChannelController } from './channel.controller';
 
 @Module({
   imports: [
@@ -21,6 +20,5 @@ import { ChannelController } from './channel.controller';
     AuthModule,
   ],
   providers: [ChannelGateway, ChannelService, ChannelUserGuard],
-  controllers: [ChannelController]
 })
 export class ChannelModule {}
