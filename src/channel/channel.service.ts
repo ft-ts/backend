@@ -12,7 +12,6 @@ import { AlreadyPresentExeption, InvalidPasswordException, MissingPasswordExcept
 from 'src/common/exceptions/chat.exception';
 import { Cm } from './entities/cm.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
-import { create } from 'domain';
 
 @Injectable()
 export class ChannelService {
@@ -112,7 +111,7 @@ export class ChannelService {
   /* ======= */
   async createChannel(
     creator: User,
-    createChannelDto: CreateChannelDto,
+    createChannelDto: any,
   ): Promise<Channel> {
     const groupChannel: Channel = new Channel();
     groupChannel.title = createChannelDto.title;
@@ -424,7 +423,6 @@ export class ChannelService {
   /* ==== */
 
   async createMessage(user: User, createMessageDto: CreateMessageDto): Promise<Cm | undefined> {
-    console.log(createMessageDto.content);
     const channel = await this.validateChannelAndMember(user, createMessageDto.channelId);
     const sender = await this.getChannelUser(user.id, channel.id);
     if (await this.isMemberMuted(user, channel.id)) {
@@ -439,6 +437,7 @@ export class ChannelService {
       timeStamp: new Date(),
     });
     await this.cmRepository.save(message)
+    console.log('message:', message);
     return message;
   }
 

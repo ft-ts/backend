@@ -42,9 +42,8 @@ export class ChannelGateway {
   /* ======= */
   @SubscribeMessage('createChannel')
   async createChannel(
-    client: Socket,
-     createGroupChannelDto: CreateChannelDto,
-  ) {
+    @ConnectedSocket() client: Socket,
+     @MessageBody() createGroupChannelDto: CreateChannelDto) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.createChannel(user, createGroupChannelDto);
     await client.join(`channel-${channel.id}`);
@@ -62,7 +61,7 @@ export class ChannelGateway {
   }
 
   @SubscribeMessage('leaveChannel')
-  async leaveChannel(@ConnectedSocket() client: Socket, payload: any) {
+  async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     await this.channelService.leaveChannel(user, payload.channelId);
     this.server.to(`channel-${payload.channelId}`).emit('leaveChannel', { channelId: payload.channelId, userId: user.uid });
@@ -71,7 +70,7 @@ export class ChannelGateway {
   }
 
   @SubscribeMessage('getAllChannels')
-  async getAllChannels(@ConnectedSocket() client: Socket, payload: any) {
+  async getAllChannels(@ConnectedSocket() client: Socket) {
     const channels = await this.channelService.getAllChannels();
     this.server.emit('getAllChannels', channels);
     return channels;
@@ -189,7 +188,7 @@ export class ChannelGateway {
   /* ==== */
 
   @SubscribeMessage('sendMessage')
-  async createMessage(@ConnectedSocket() client: Socket, @MessageBody() createMessageDto: CreateMessageDto) {
+  async createMessage(client: Socket, createMessageDto: CreateMessageDto) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const message = await this.channelService.createMessage(user, createMessageDto);
     this.server.to(`channel-${createMessageDto.channelId}`).emit('sendMessage', message);
