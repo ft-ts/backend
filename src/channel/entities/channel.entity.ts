@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, IntegerType } from 'typeorm';
 import { ChannelMode } from '../enum/channelMode.enum';
 import { ChannelUser } from './channelUser.entity';
 
@@ -21,4 +21,7 @@ export class Channel {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @Column("int", { array: true, nullable: true })
+  banned_uid: number[];
 }

@@ -8,9 +8,11 @@ import { User } from 'src/user/entities/user.entity';
 import { Channel } from './entities/channel.entity';
 import { ChannelUser } from './entities';
 import { InjectRepository } from '@nestjs/typeorm';
-import { InvalidPasswordException, MissingPasswordException, NotAuthorizedException, NotFoundException } 
+import { AlreadyPresentExeption, InvalidPasswordException, MissingPasswordException, NotAuthorizedException, NotFoundException } 
 from 'src/common/exceptions/chat.exception';
 import { Cm } from './entities/cm.entity';
+import { CreateMessageDto } from './dto/create-message.dto';
+import { create } from 'domain';
 
 @Injectable()
 export class ChannelService {
@@ -89,19 +91,20 @@ export class ChannelService {
     return channelUser.is_muted;
   }
 
-  async isMemberBanned(user: User, channelId: number): Promise<boolean> {
-    const channelUser = await this.getChannelUser(user.id, channelId);
-    if (!channelUser) {
-      throw new NotFoundException('Channel user not found');
-    }
-    return channelUser.is_banned;
-  }
-
   async getMemberCnt(channel: Channel): Promise<number> {
     const channelUsers = await this.channelUserRepository.find({
       where: { channel: { id: channel.id } },
     });
     return channelUsers.length;
+  }
+
+  async isBannedUser(user: User, channel: Channel): Promise<boolean> {
+    if (!channel.banned_uid || channel.banned_uid.length === 0) {
+      return false;
+    }
+  
+    const isBanned = channel.banned_uid.includes(user.id);
+    return isBanned;
   }
 
   /* ======= */
@@ -174,7 +177,6 @@ export class ChannelService {
     channelUser.channel = channel;
     channelUser.role = ChannelRole.NORMAL;
     channelUser.is_muted = false;
-    channelUser.is_banned = false;
     return await this.channelUserRepository.save(channelUser);
   }
 
@@ -343,42 +345,43 @@ export class ChannelService {
     }
   }
 
-  async banMember(user: User, channelId: number, targetId: number): Promise<void> {
+  async banMember(user: User, channelId: number, targetUser: User): Promise<void> {
     const channelAdmin = await this.getChannelUser(user.id, channelId);
     if (channelAdmin.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the admin of the channel');
     }
-  const targetChannelUser = await this.getChannelUser(targetId, channelId);
-    if (!targetChannelUser.is_banned) {
-      targetChannelUser.is_banned = true;
-      await this.channelUserRepository.save(targetChannelUser);
+    const channel = await this.getChannelById(channelId);
+    const isBannedTarget = await this.isBannedUser(targetUser, channel);
+    if (!isBannedTarget) {
+      channel.banned_uid.push(targetUser.uid);
+      await this.channelRepository.save(channel);
     }
     else {
-      throw new NotAuthorizedException('User has already been banned');
+      throw new AlreadyPresentExeption('User has already been banned');
     }
   }
 
-  async unbanMember(user: User, channelId: number, targetId: number): Promise<void> {
+  async unbanMember(user: User, channelId: number, targetUser: User): Promise<void> {
     const channelAdmin = await this.getChannelUser(user.id, channelId);
     if (channelAdmin.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the admin of the channel');
     }
-    const targetChannelUser = await this.getChannelUser(targetId, channelId);
-    if (targetChannelUser.is_banned) {
-      targetChannelUser.is_banned = false;
-      await this.channelUserRepository.save(targetChannelUser);
-    }
-    else {
-      throw new NotAuthorizedException('User is not banned');
+    const channel = await this.getChannelById(channelId);
+  const isBannedTarget = await this.isBannedUser(targetUser, channel);
+  if (isBannedTarget) {
+    channel.banned_uid = channel.banned_uid.filter((uid) => uid !== targetUser.uid);
+    await this.channelRepository.save(channel);
+  } else {
+      throw new NotFoundException('User is not banned');
     }
   }
 
-  async kickMember(user: User, channelId: number, targetId: number): Promise<void> {
+  async kickMember(user: User, channelId: number, targetUser: User): Promise<void> {
     const channelOwner = await this.getChannelUser(user.id, channelId);
     if (channelOwner.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the owner of the channel');
     }
-    const targetChannelUser = await this.getChannelUser(targetId, channelId);
+    const targetChannelUser = await this.getChannelUser(targetUser.id, channelId);
     await this.channelUserRepository.delete(targetChannelUser.id);
   }
 
@@ -406,7 +409,7 @@ export class ChannelService {
     else if (!targetChannelUser) {
       await this.joinChannel(targetUser, await this.getChannelById(channelId));
     }
-    else if (targetChannelUser.is_banned) {
+    else if (this.isBannedUser(targetUser, channel)) {
       throw new NotAuthorizedException('User is banned from the channel');
     }
     else
@@ -420,17 +423,21 @@ export class ChannelService {
   /* Chat */
   /* ==== */
 
-  async createMessage(user: User, channelId: number, content: string): Promise<Cm> {
-    const channel = await this.validateChannelAndMember(user, channelId);
-
-    const message = new Cm();
-    message.channelUser = await this.channelUserRepository.findOne({ where: { user: { id: user.id }, channel: { id: channel.id } } });
-    
-    if (await this.isMemberMuted(user, channelId)) {
+  async createMessage(user: User, createMessageDto: CreateMessageDto): Promise<Cm | undefined> {
+    console.log(createMessageDto.content);
+    const channel = await this.validateChannelAndMember(user, createMessageDto.channelId);
+    const sender = await this.getChannelUser(user.id, channel.id);
+    if (await this.isMemberMuted(user, channel.id)) {
       throw new NotAuthorizedException('User is muted');
     }
-    message.content = content;
-    message.timeStamp = new Date();
+    if (!createMessageDto.content) {
+      throw new NotFoundException('Content is empty');
+    }
+    const message = this.cmRepository.create({
+      sender: sender,
+      content: createMessageDto.content,
+      timeStamp: new Date(),
+    });
     await this.cmRepository.save(message)
     return message;
   }

@@ -14,7 +14,7 @@ export class ChannelUser {
   @JoinColumn()
   user: User;
 
-  @OneToMany(() => Cm, (cm) => cm.channelUser)
+  @OneToMany(() => Cm, (cm) => cm.sender)
   message: Cm[]; 
 
   @ManyToOne(() => Channel, (channel) => channel.channelUser)
@@ -29,7 +29,4 @@ export class ChannelUser {
 
   @Column({ nullable: false, default: false })
   is_muted: boolean;
-
-  @Column({ nullable: false, default: false })
-  is_banned: boolean;
 }

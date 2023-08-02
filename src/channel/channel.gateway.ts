@@ -6,7 +6,7 @@ import { CreateChannelDto } from './dto/create-channel.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 
 interface UserSocketMap {
-  [userId: string]: Socket;
+  [userUid: number]: Socket;
 }
 
 @WebSocketGateway({
@@ -114,49 +114,57 @@ export class ChannelGateway {
   async getChannelMembers(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const members = await this.channelService.getChannelMembers(payload.channelId);
     this.server.emit('getChannelMembers', members);
-    return members;
   }
 
   @SubscribeMessage('grantAdmin')
-  async grantAdmin(@ConnectedSocket() client: Socket, payload: any) {
+  async grantAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     await this.channelService.grantAdmin(user, payload.channelId , payload.targetUserId);
+    this.server.to(`channel-${payload.channelId}`).emit('grantAdmin', { channelId: payload.channelId, userId: payload.targetUserId });
   }
 
   @SubscribeMessage('revokeAdmin')
-  async revokeAdmin(@ConnectedSocket() client: Socket, payload: any) {
+  async revokeAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     await this.channelService.revokeAdmin(user, payload.channelId , payload.targetUserId);
+    this.server.to(`channel-${payload.channelId}`).emit('revokeAdmin', { channelId: payload.channelId, userId: payload.targetUserId });
   }
 
   @SubscribeMessage('muteMember')
-  async muteMember(@ConnectedSocket() client: Socket, payload: any) {
+  async muteMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     await this.channelService.muteMember(user, payload.channelId , payload.targetUserId);
+    this.server.to(`channel-${payload.channelId}`).emit('muteMember', { channelId: payload.channelId, userId: payload.targetUserId });
   }
 
   @SubscribeMessage('banMember')
-  async banMember(@ConnectedSocket() client: Socket, payload: any) {
+  async banMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
-    await this.channelService.banMember(user, payload.channelId , payload.targetUserId);
+    const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
+    await this.channelService.banMember(user, payload.channelId , targetUser);
+    const targetUserSocket = this.userSocketMap[payload.targetUserUid];
+    await this.leaveChannel(targetUserSocket, payload.channelId);
+    this.server.to(`channel-${payload.channelId}`).emit('banMember', { channelId: payload.channelId, userId: payload.targetUserId });
   }
 
   @SubscribeMessage('unbanMember')
-  async unbanMember(@ConnectedSocket() client: Socket, payload: any) {
+  async unbanMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
-    await this.channelService.unbanMember(user, payload.channelId , payload.targetUserId);
+    const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
+    await this.channelService.unbanMember(user, payload.channelId, targetUser);
   }
 
   @SubscribeMessage('kickMember')
-  async kickMember(@ConnectedSocket() client: Socket, payload: any) {
+  async kickMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
-    await this.channelService.kickMember(user, payload.channelId , payload.targetUserId);
+    const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
+    await this.channelService.kickMember(user, payload.channelId , targetUser);
     const targetUserSocket = this.server.sockets.sockets.get(payload.targetUserId);
     if (targetUserSocket) {
       targetUserSocket.leave(`channel-${payload.channelId}`);
       targetUserSocket.emit('kickChannel', { channelId: payload.channelId, userId: payload.targetUserId });
     }
-
+    this.server.to(`channel-${payload.channelId}`).emit('kickMember', { channelId: payload.channelId, userId: payload.targetUserId });
   }
 
   @SubscribeMessage('inviteUserToChannel')
@@ -164,16 +172,14 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUid);
 
-    // await this.channelService.inviteUserToChannel(user, payload.channelId , targetUser);
+    await this.channelService.inviteUserToChannel(user, payload.channelId , targetUser);
     const targetUserSocket = this.userSocketMap[payload.targetUid];
-
-
     console.log('targetUserSocket', targetUserSocket)
 
-    // if (targetUserSocket) {
-    //   targetUserSocket.join(`channel-${payload.channelId}`);
-    //   targetUserSocket.emit('enterChannel', { channelId: payload.channelId, userId: payload.targetId });
-    // }
+    if (targetUserSocket) {
+      targetUserSocket.join(`channel-${payload.channelId}`);
+      targetUserSocket.emit('enterChannel', { channelId: payload.channelId, userId: payload.targetId });
+    }
     this.server.emit('inviteUserToChannel', targetUser);
   }
 
@@ -182,11 +188,11 @@ export class ChannelGateway {
   /* Chat */
   /* ==== */
 
-  // @UseGuards(ChannelUserGuard)
   @SubscribeMessage('sendMessage')
-  async createMessage(@ConnectedSocket() client: Socket, @MessageBody() data: CreateMessageDto) {
-    const message = await this.channelService.createMessage(client.data.uid, data.channelId, data.content);
-    this.server.to(`channel-${data.channelId}`).emit('sendMessage', message);
+  async createMessage(@ConnectedSocket() client: Socket, @MessageBody() createMessageDto: CreateMessageDto) {
+    const user = await this.channelService.getAuthenticatedUser(client.data.uid);
+    const message = await this.channelService.createMessage(user, createMessageDto);
+    this.server.to(`channel-${createMessageDto.channelId}`).emit('sendMessage', message);
     return message;
   }
 }
