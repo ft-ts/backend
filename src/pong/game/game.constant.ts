@@ -1,6 +1,7 @@
 export const gameConstants = {
-  canvasWidth: 600,
-  canvasHeight: 600,
+  canvasWidth: 1280,
+  canvasHeight: 720,
+  gameInterval: 30,
 };
   
 export const ballConstatns = {
@@ -33,7 +34,8 @@ HOMEPLAYER: 'homePlayer',
 AWAYPLAYER: 'awayPlayer',
 };
 
-export const input = {
+export const keyInput = {
 UP: 'up',
 DOWN: 'down',
+NONE: 'none'
 };
