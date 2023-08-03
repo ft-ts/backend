@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Socket } from "socket.io";
 import { MatchInfo } from "./dto/pong.dto";
 import { GameService } from "./game/game.service";
+import { MatchType } from "./enum/matchType.enum";
 
 @Injectable()
 export class PongService{
@@ -18,7 +19,7 @@ export class PongService{
   async createGame(
     client1: Socket,
     client2: Socket,
-    matchType: string,
+    matchType: MatchType,
   ){
     console.log('createGame');
     
@@ -29,7 +30,7 @@ export class PongService{
   private async setMatchInfo(
     client1: Socket,
     client2: Socket,
-    matchType: string,
+    matchType: MatchType,
     ): Promise<MatchInfo>{
     // const matchID: string = Math.random().toString(36).slice(2);
     const matchID: string = `pong_${client1.data.uid}`;
@@ -42,7 +43,7 @@ export class PongService{
       user2_score: 0,
       user1_elo: 0,
       user2_elo: 0,
-      winner_id: '',
+      winner_id: 0,
       start_date: new Date(),
       interval: null,
     }
@@ -53,7 +54,12 @@ export class PongService{
     client: Socket,
   ){
     console.log('joinLadder');
-    this.ladderQueue.push(client);
+    if (this.ladderQueue.indexOf(client) > -1){
+      this.ladderQueue.push(client);
+      client.emit('pong/ladder/join');
+    } else {
+      client.emit('pong/ladder/join/fail');
+    }
   }
 
   async cancleLadder(
@@ -73,7 +79,7 @@ export class PongService{
     if (client1 && client2){
       console.log('match ladder success');
       client2.join(`pong_${client1.data.uid}`);
-      await this.createGame(client1, client2, 'ladder');
+      await this.createGame(client1, client2, MatchType.LADDER);
     }
   }
 }
