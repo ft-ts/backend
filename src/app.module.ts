@@ -3,7 +3,7 @@ import { PongModule } from './pong/pong.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/auth.config';
 import { UserModule } from './user/user.module';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoginModule } from './login/login.module';
 import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
 import { AuthModule } from './auth/auth.module';

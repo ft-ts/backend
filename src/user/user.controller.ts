@@ -40,8 +40,15 @@ export class UserController {
   }
 
   @Get('friends')
-  findFriends(@GetUser() user: User) {
-    return this.usersService.findFriends(user);
+  async findFriends(@GetUser() user: User) {
+    const result = await this.usersService.findFriends(user);
+    console.log(result);
+    return result;
+  }
+
+  @Get('friends/all')
+  findAllFriendships() {
+    return this.usersService.findAllFriendships();
   }
 
   @Post('friends')

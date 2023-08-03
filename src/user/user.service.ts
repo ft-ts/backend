@@ -5,15 +5,17 @@ import {
 } from '@nestjs/common';
 import { User } from './entities/user.entity';
 import { Friendship } from './entities/friendship.entity';
-import { FriendshipRepository } from './repositories/friendship.repository';
 import { UserRepository } from './repositories/user.repository';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly usersRepository: UserRepository,
-    private readonly friendshipRepository: FriendshipRepository,
-  ) {}
+    @InjectRepository(Friendship)
+    private readonly friendshipRepository: Repository<Friendship>,
+  ) { }
 
   async updateUser(user: User, body) {
     if (body.uid || body.email)
@@ -36,20 +38,15 @@ export class UserService {
   }
 
   async findFriends(user: User) {
-    const existingFriendship = await this.friendshipRepository
+    return await this.friendshipRepository
       .createQueryBuilder('friendship')
       .leftJoinAndSelect('friendship.user', 'user')
       .leftJoinAndSelect('friendship.friend', 'friend')
-      .where('friendship.user = :userId', {
-        userId: user.id,
+      .where('user.uid = :uid', {
+        uid: user.uid,
       })
-      .select(['friendship.id', 'user.name', 'friend.name'])
+      .select(['friendship.id', 'user.name', 'user.uid', 'friend.name', 'friend.uid'])
       .getMany();
-    return existingFriendship.map((friendship) => ({
-      id: friendship.id,
-      user: friendship.user.name,
-      friend: friendship.friend.name,
-    }));
   }
 
   async findOne(uid: number) {
@@ -124,5 +121,14 @@ export class UserService {
       .getMany();
 
     return friendships;
+  }
+
+  async findAllFriendships() {
+    return await this.friendshipRepository
+      .createQueryBuilder('friendship')
+      .leftJoinAndSelect('friendship.user', 'user')
+      .leftJoinAndSelect('friendship.friend', 'friend')
+      .select(['friendship.id', 'user.name', 'user.uid', 'friend.name', 'friend.uid',])
+      .getMany();
   }
 }

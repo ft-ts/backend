@@ -18,6 +18,6 @@ import { AuthModule } from 'src/auth/auth.module';
     AuthModule,
   ],
   controllers: [UserController],
-  providers: [UserService, UserRepository, FriendshipRepository],
+  providers: [UserService, UserRepository],
 })
 export class UserModule {}
