@@ -1,5 +1,10 @@
 import { Entity } from './object.entitiy'
-import { paddleConstants, entityType, gameConstants } from '../game.constant'
+import { 
+  paddleConstants,
+  entityType,
+  gameConstants,
+  keyInput
+} from '../game.constant'
 
 export class Paddle extends Entity {
   private playerID: string;
@@ -17,8 +22,8 @@ export class Paddle extends Entity {
   }
 
   update(key: string) {
-    const isUp : boolean = key === 'up' ? true : false;
-    const isDown : boolean = key === 'down' ? true : false;
+    const isUp : boolean = key === keyInput.UP ? true : false;
+    const isDown : boolean = key === keyInput.DOWN ? true : false;
     if (isUp && this.y + this.height > 0) {
       this.dy = -1;
     } else if (isDown && this.y < gameConstants.canvasHeight - this.height) {
