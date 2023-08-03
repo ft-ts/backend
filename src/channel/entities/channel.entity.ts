@@ -24,4 +24,7 @@ export class Channel {
 
   @Column("int", { array: true, nullable: true })
   banned_uid: number[];
+
+  @Column("int", { array: true, nullable: true })
+  muted_uid: number[];
 }

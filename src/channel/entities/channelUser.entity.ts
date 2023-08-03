@@ -26,7 +26,4 @@ export class ChannelUser {
 
   @Column({ nullable: false, default: ChannelRole.NORMAL })
   role: ChannelRole;
-
-  @Column({ nullable: false, default: false })
-  is_muted: boolean;
 }
