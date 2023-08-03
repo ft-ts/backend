@@ -11,6 +11,7 @@ import {
 import { Socket, Server } from 'socket.io';
 import { PongService } from './pong.service';
 import { GameService } from './game/game.service';
+import { MatchType } from './enum/matchType.enum';
 
 @WebSocketGateway({
   namespace: 'pong',
@@ -102,7 +103,7 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
    if (this.rooms.has(`pong_${payload.uid}`) &&
        this.rooms.get(`pong_${payload.uid}`).size === 1){
       client.join(`pong_${payload.uid}`);
-      this.pongService.createGame(client, opponent, '1v1');
+      this.pongService.createGame(client, opponent, MatchType.CUSTOM);
     }
     else {
       console.log('pong/accept', 'error');
