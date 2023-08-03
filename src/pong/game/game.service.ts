@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { Socket } from "socket.io";
-import { MatchInfo, GameInfo } from "../dto/pong.dto";
+import { MatchInfo, GameInfo, updateDto } from "../dto/pong.dto";
 import { Ball } from "../game/entities/ball.entity";
 import { Paddle } from "../game/entities/paddle.entity";
-import { gameConstants, keyInput } from "./game.constant";
+import { gameConstants} from "./game.constant";
 
 @Injectable()
 export class GameService{
@@ -30,6 +30,7 @@ export class GameService{
       player2: gameInfo.player1.toDto(),
       ball: gameInfo.ball.toDto(),
     });
+    this.gameLoop = this.gameLoop.bind(this);
     matchInfo.interval = setInterval(() => {
       this.gameLoop(gameInfo, matchInfo);
     }
@@ -59,16 +60,21 @@ export class GameService{
     gameInfo.ball.update();
     // gameInfo.player1.update(matchInfo.user1.data.keyInput);
     // gameInfo.player2.update(matchInfo.user2.data.keyInput);
-    matchInfo.user1.emit('pong/game/update', {
-      player1: gameInfo.player1.toDto(),
-      player2: gameInfo.player2.toDto(),
-      ball: gameInfo.ball.toDto(),
-    });
-    matchInfo.user2.emit('pong/game/update', {
-      player1: gameInfo.player2.toDto(),
-      player2: gameInfo.player1.toDto(),
-      ball: gameInfo.ball.toDto(),
-    });
+    if (matchInfo.user1.data.paddle.score >= gameConstants.maxScore || 
+      matchInfo.user2.data.paddle.score >= gameConstants.maxScore){
+        await this.endGame(matchInfo.user1, matchInfo.user2, matchInfo);
+      } else {
+        matchInfo.user1.emit('pong/game/update', {
+          player1: gameInfo.player1.toDto(),
+          player2: gameInfo.player2.toDto(),
+          ball: gameInfo.ball.toDto(),
+        });
+        matchInfo.user2.emit('pong/game/update', {
+          player1: gameInfo.player2.toDto(),
+          player2: gameInfo.player1.toDto(),
+          ball: gameInfo.ball.toDto(),
+        });
+      }
   }
 
   async keyEvent(
@@ -87,37 +93,49 @@ export class GameService{
     console.log('endGame');
     matchInfo.user1_score = client1.data.paddle.score;
     matchInfo.user2_score = client2.data.paddle.score;
-    matchInfo.winner_id = client1.data.paddle.score > client2.data.paddle.score ? client1.id : client2.id;
+    matchInfo.winner_id = client1.data.paddle.score > client2.data.paddle.score ? client1.data.uid : client2.data.uid;
 
     await client2.leave(matchInfo.matchID);
     await client1.emit('pong/game/end', {
-      winner: client1.id === matchInfo.winner_id,
+      winner: client1.data.uid === matchInfo.winner_id,
       client1_score: matchInfo.user1_score,
       client2_score: matchInfo.user2_score,
     });
     await client2.emit('pong/game/end', {
-      winner: client2.id === matchInfo.winner_id,
+      winner: client2.data.uid === matchInfo.winner_id,
       client1_score: matchInfo.user2_score,
       client2_score: matchInfo.user1_score,
     });
     clearInterval(matchInfo.interval);
-    await this.saveGameResult(matchInfo);
+    const updatedDto : updateDto = await this.saveGameResult(matchInfo);
   }
 
   private async saveGameResult(
     matchInfo: MatchInfo,
-  ){
+  ): Promise<updateDto>{
     console.log('saveGameResult');
     const player1_new_point: number = await this.calculateEloPoint(
       matchInfo.user1_elo,
       matchInfo.user2_elo,
-      matchInfo.winner_id === matchInfo.user1.id,
+      matchInfo.winner_id === matchInfo.user1.data.uid,
     );
     const player2_new_point: number = await this.calculateEloPoint(
       matchInfo.user2_elo,
       matchInfo.user2_elo,
-      matchInfo.winner_id === matchInfo.user2.id,
+      matchInfo.winner_id === matchInfo.user2.data.uid,
     );
+    const updateDto: updateDto = {
+      user1_id: matchInfo.user1.data.uid,
+      user2_id: matchInfo.user2.data.uid,
+      match_type: matchInfo.matchType,
+      user1_score: matchInfo.user1_score,
+      user2_score: matchInfo.user2_score,
+      user1_elo: player1_new_point,
+      user2_elo: player2_new_point,
+      winner_id: matchInfo.winner_id,
+      timestamp: matchInfo.start_date,
+    }
+    return (updateDto);
   }
   
   private async calculateEloPoint(
