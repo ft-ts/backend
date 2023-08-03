@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, IntegerType } from 'typeorm';
 import { ChannelMode } from '../enum/channelMode.enum';
 import { ChannelUser } from './channelUser.entity';
+import { Cm } from './cm.entity';
 
 @Entity()
 export class Channel {
@@ -9,6 +10,9 @@ export class Channel {
 
   @OneToMany(() => ChannelUser, (channelUser) => channelUser.channel)
   channelUser: ChannelUser[];
+
+  @OneToMany(() => Cm, (cm) => cm.channel)
+  message: Cm[];
 
   @Column({ nullable: false })
   title: string;

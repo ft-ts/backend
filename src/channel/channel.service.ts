@@ -127,6 +127,8 @@ export class ChannelService {
       }
       newChannel.password = await this.setPassword(createChannelDto.password);
     }
+    newChannel.banned_uid = [];
+    newChannel.muted_uid = [];
     const savedNewChannel = await this.channelRepository.save(newChannel);
     const channelUser = this.channelUserRepository.create({
         user: creator,
@@ -155,6 +157,9 @@ export class ChannelService {
       throw new NotFoundException('Channel not found');
     }
 
+    if (await this.isBannedUser(user, channel)) {
+      throw new NotAuthorizedException('You are banned from the channel');
+    }
     const existingUser = await this.channelUserRepository.findOne({
       where: { user: { id: user.id }, channel: { id: channel.id } },
     });
@@ -344,7 +349,9 @@ export class ChannelService {
     const channel = await this.getChannelById(channelId);
     const isBannedTarget = await this.isBannedUser(targetUser, channel);
     if (!isBannedTarget) {
-      channel.banned_uid.push(targetUser.uid);
+      await channel.banned_uid.push(targetUser.uid);
+      const targetChannelUser = await this.getChannelUser(targetUser.id, channelId);
+      await this.channelUserRepository.delete(targetChannelUser.id);
       await this.channelRepository.save(channel);
     }
     else {
@@ -405,7 +412,6 @@ export class ChannelService {
 
   async createMessage(user: User, createMessageDto: CreateMessageDto): Promise<Cm | undefined> {
     const channel = await this.validateChannelAndMember(user, createMessageDto.channelId);
-    const sender = await this.getChannelUser(user.id, channel.id);
     if (await this.isMutedMember(user, channel)) {
       throw new NotAuthorizedException('User is muted');
     }
@@ -413,8 +419,8 @@ export class ChannelService {
       throw new NotFoundException('Content is empty');
     }
     const message = this.cmRepository.create({
-      sender: sender,
-      channelId: channel.id,
+      channel: channel,
+      sender_uid: user.uid,
       content: createMessageDto.content,
       timeStamp: new Date(),
     });
@@ -422,10 +428,10 @@ export class ChannelService {
     return message;
   }
 
-  async getChannelMessages(channelId: number): Promise<Cm[]> {
+  async getChannelMessages(channel: Channel): Promise<Cm[]> {
     const messages = await this.cmRepository.find({
-      where: { channelId: channelId },
-      relations: ['sender'],
+      where: { channel: { id: channel.id} },
+      order: { timeStamp: 'DESC' },
     });
     return messages;
   }

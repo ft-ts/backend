@@ -14,9 +14,6 @@ export class ChannelUser {
   @JoinColumn()
   user: User;
 
-  @OneToMany(() => Cm, (cm) => cm.sender)
-  message: Cm[]; 
-
   @ManyToOne(() => Channel, (channel) => channel.channelUser)
   @JoinColumn()
   channel: Channel;
