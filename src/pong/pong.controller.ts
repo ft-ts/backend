@@ -1,34 +1,22 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { PongService } from './pong.service';
-import { CreatePongDto } from './dto/create-pong.dto';
-import { UpdatePongDto } from './dto/update-pong.dto';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { PongRepository } from './pong.repository';
+import { GetUser } from 'src/common/decorators';
+import { AtGuard } from 'src/auth/auth.guard';
 
 @Controller('pong')
+@UseGuards(AtGuard)
 export class PongController {
-  constructor(private readonly pongService: PongService) {}
+  constructor(
+    private readonly pongRepository: PongRepository,
+    ) {} 
 
-  @Post()
-  create(@Body() createPongDto: CreatePongDto) {
-    return this.pongService.create(createPongDto);
-  }
+    @Get('all')
+    getAllMatchHistory() {
+      return this.pongRepository.getAllMatchHistory();
+    }
 
-  @Get()
-  findAll() {
-    return this.pongService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.pongService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePongDto: UpdatePongDto) {
-    return this.pongService.update(+id, updatePongDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.pongService.remove(+id);
-  }
+    @Get(':id')
+    getUserMatchHistory(@GetUser() user: any) {
+      return this.pongRepository.getUserMatchHistory(user.uid);
+    }
 }
