@@ -6,12 +6,12 @@ import { ChannelMode } from './enum/channelMode.enum';
 import { ChannelRole } from './enum/channelRole.enum';
 import { User } from 'src/user/entities/user.entity';
 import { Channel } from './entities/channel.entity';
-import { ChannelUser } from './entities';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AlreadyPresentExeption, InvalidPasswordException, MissingPasswordException, NotAuthorizedException, NotFoundException } 
 from 'src/common/exceptions/chat.exception';
 import { Cm } from './entities/cm.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { ChannelUser } from './entities/channelUser.entity';
 
 @Injectable()
 export class ChannelService {
@@ -326,7 +326,7 @@ export class ChannelService {
     }
   }
 
-  async muteMember(user: User, channelId: number, targetId: number): Promise<void> {
+  async muteMember(user: User, channelId: number, targetUid: number): Promise<void> {
     const channelAdmin = await this.getChannelUser(user.id, channelId);
     if (channelAdmin.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the admin of the channel');
@@ -336,10 +336,10 @@ export class ChannelService {
       throw new NotAuthorizedException('Member is already muted');
     }
     else {
-      channel.muted_uid.push(targetId);
+      channel.muted_uid.push(targetUid);
       await this.channelRepository.save(channel);
       setTimeout(async () => {
-        channel.muted_uid = channel.muted_uid.filter((uid) => uid !== targetId);
+        channel.muted_uid = channel.muted_uid.filter((uid) => uid !== targetUid);
         await this.channelRepository.save(channel);
       }, this.muteDuration);
     }

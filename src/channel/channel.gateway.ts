@@ -62,7 +62,7 @@ export class ChannelGateway {
   @SubscribeMessage('createChannel')
   async createChannel(
     @ConnectedSocket() client: Socket,
-     @MessageBody() createGroupChannelDto: CreateChannelDto) {
+    @MessageBody() createGroupChannelDto: CreateChannelDto) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.createChannel(user, createGroupChannelDto);
     await client.join(`channel-${channel.id}`);
@@ -200,7 +200,7 @@ export class ChannelGateway {
     const targetUserSocket = await this.userSocketMap[targetUser.uid];
     if (!!targetUserSocket) {
       console.log('inviteUserToChannel', targetUserSocket.data.uid);
-       await targetUserSocket.join(`channel-${payload.channelId}`);
+      await targetUserSocket.join(`channel-${payload.channelId}`);
     }
     this.server.to(`channel-${payload.channelId}`).emit('inviteUserToChannel', { channelId: payload.channelId, inviter: user.name, invitee: targetUser.name });
   }

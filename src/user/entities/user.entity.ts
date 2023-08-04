@@ -7,7 +7,7 @@ import {
 import { UserStatus } from '../enums/userStatus.enum';
 import { Friendship } from './friendship.entity';
 import { DM } from 'src/dm/entities/dm.entity';
-import { ChannelUser } from 'src/channel/entities';
+import { ChannelUser } from 'src/channel/entities/channelUser.entity';
 
 @Entity({ name: 'users' })
 export class User {
@@ -49,6 +49,18 @@ export class User {
 
   @OneToMany(() => DM, (dm) => dm.receiver)
   receiveDms: DM[];
+
+  @Column({ default: 0, nullable: false })
+  custom_wins: number;
+
+  @Column({ default: 0, nullable: false })
+  custom_losses: number;
+
+  @Column({ default: 0, nullable: false })
+  ladder_wins: number;
+
+  @Column({ default: 0, nullable: false })
+  ladder_losses: number;
 
   @Column({ name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;

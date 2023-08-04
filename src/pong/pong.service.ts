@@ -74,8 +74,6 @@ export class PongService{
 
   private async matchLadder(
   ){
-    console.log('matchLadder', this.ladderQueue.length);
-    
     if (this.ladderQueue.length >= 2){
       const client1: Socket = this.ladderQueue.shift();
       const client2: Socket = this.ladderQueue.shift();

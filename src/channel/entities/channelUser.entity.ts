@@ -1,8 +1,7 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { ChannelRole } from '../enum/channelRole.enum';
 import { User } from '../../user/entities/user.entity';
-import { Channel } from '.';
-import { Cm } from './cm.entity';
+import { Channel } from './channel.entity';
 
 @Entity()
 @Index(['user', 'channel'], { unique: true })

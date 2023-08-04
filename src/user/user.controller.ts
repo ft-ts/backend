@@ -21,7 +21,7 @@ export class UserController {
 
   @Get()
   findMe(@GetUser() user: User) {
-    return this.usersService.findOne(user.id);
+    return this.usersService.findOne(user.uid);
   }
 
   @Patch()
