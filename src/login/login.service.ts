@@ -12,6 +12,11 @@ export class LoginService {
     private readonly jwtService: JwtService,
     private readonly loginRepository: LoginRepository,
   ) { }
+  
+  onModuleInit() {
+    this.loginRepository.update({}, { status: UserStatus.OFFLINE });
+    Logger.log('[AuthService onModuleInit] All Users Status => OFFLINE');
+  }
 
   async getTokens(userInfo: User): Promise<Tokens> {
     const { uid, email, twoFactorAuth } = userInfo;

@@ -1,67 +1,136 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
-import { DM } from './entities/dm.entity';
-import { Socket } from 'socket.io';
-
-enum DmType {
-  DM,
-  NOTIFICATION,
-}
+import { Injectable, Logger } from '@nestjs/common';
+import { DmType } from './enum/dm.type';
+import { dmRepository } from './dm.repository';
+import { DmStatus } from './enum/dm-status.enum';
+import { DmResultType } from './enum/dm.result';
+import { UserStatus } from 'src/user/enums/userStatus.enum';
 
 @Injectable()
 export class DmService {
   constructor(
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
-    @InjectRepository(DM)
-    private dmRepository: Repository<DM>,
-  ) {}
+    private readonly dmRepository: dmRepository,
+  ) { }
 
   async saveDmLog(payload: any) {
     console.log('dm/saveDmLog', payload);
-    const dm = this.dmRepository.create(
-      {
-        sender : await this.userRepository.findOneBy({ uid : payload.senderUid}),
-        receiver : await this.userRepository.findOneBy({ uid : payload.receiverUid }),
-        message : payload.message,
-        createdAt : new Date(),
-      }
-    );
+    const dm = await this.dmRepository.createNewDm(payload);
     return await this.dmRepository.save(dm);
   }
 
-  async getAllDmLog(userUid: number) {
-    const result = await this.dmRepository
-    .createQueryBuilder('dm')
-    .leftJoinAndSelect('dm.sender', 'sender')
-    .leftJoinAndSelect('dm.receiver', 'receiver')
-    .select(['dm.id', 'dm.message', 'dm.createdAt', 'dm.viewed', 'dm.type', 'sender.name', 'sender.uid', 'receiver.name', 'receiver.uid'])
-    .where('sender.uid = :uid', { uid : userUid })
-    .orWhere('receiver.uid = :uid', { uid : userUid })
-    .orderBy('dm.createdAt', 'DESC')
-    .getMany();
+  async getAllMyDmLog(userUid: number) {
+    const result = await this.dmRepository.findAllDmLog(userUid);
     return result;
   }
 
   async getDMLogBetween(userUid: number, targetName: string) {
-    const target = await this.userRepository.findOneBy({ name : targetName });
+    const target = await this.dmRepository.findUserBy({ name: targetName });
     if (!target) {
       return null;
     }
-    const result = await this.dmRepository
-    .createQueryBuilder('dm')
-    .leftJoinAndSelect('dm.sender', 'sender')
-    .leftJoinAndSelect('dm.receiver', 'receiver')
-    .select(['dm.id', 'dm.message', 'dm.createdAt', 'dm.viewed', 'dm.type', 'sender.name', 'sender.uid', 'receiver.name', 'receiver.uid'])
-    .where('sender.uid = :uid', { uid : userUid })
-    .andWhere('receiver.uid = :targetUid', { targetUid : target.uid })
-    .orWhere('sender.uid = :targetUid', { targetUid : target.uid })
-    .andWhere('receiver.uid = :uid', { uid : userUid })
-    .orderBy('dm.createdAt', 'DESC')
-    .getMany();
+    const result = await this.dmRepository.findDmLogBetween(userUid, target.uid);
+
     return result;
   }
 
+  async handleResponse(payload: any): Promise<{ result: DmResultType, reason: string }> {
+    const { requestDmId, response, senderUid } = payload;
+
+    const dm = await this.dmRepository.findDmLogById(requestDmId);
+    if (!dm) {
+      Logger.warn(`[${senderUid}] 해당 요청(${dm.id})이 존재하지 않습니다.`);
+      return { result: DmResultType.FAIL, reason: '해당 요청이 존재하지 않습니다.' };
+    }
+    if (dm.status !== DmStatus.PENDING) {
+      Logger.warn(`[${senderUid}] 해당 요청(${dm.id})이 이미 처리되었습니다.`);
+      return { result: DmResultType.FAIL, reason: '해당 요청이 이미 처리되었습니다.' };
+    }
+    if (response === 'ACCEPT') {
+      if (dm.type === DmType.MATCH) {
+        console.log('매치 요청을 수락했습니다.');
+      }
+
+      dm.status = DmStatus.ACCEPTED;
+      await this.dmRepository.update(dm.id, { status: dm.status });
+      Logger.log(`${dm.receiver.name}(${dm.receiver.uid})가 ${dm.sender.name}(${dm.sender.uid})의 ${dm.type} 요청(${dm.id})을 수락했습니다.`);
+
+      return { reason: '요청을 수락했습니다.', result: DmResultType.SUCCESS };
+    } else if (response === 'REJECT') {
+      dm.status = DmStatus.REJECTED;
+      await this.dmRepository.update(dm.id, { status: dm.status });
+      Logger.log(`[${senderUid}] 요청을 거절했습니다.`);
+
+      return { reason: '요청을 거절했습니다.', result: DmResultType.SUCCESS };
+    }
+  }
+
+  async getPendingRequests(userUid: number) {
+    const result = await this.dmRepository.findPendingRequests(userUid);
+    return result;
+  }
+
+  async cancelFriendRequest(payload: any) {
+    const { requestDmId, senderUid } = payload;
+
+    const dm = await this.dmRepository.findDmLogById(requestDmId);
+    if (!dm) {
+      Logger.warn(`[${senderUid}] 해당 요청이 존재하지 않습니다.`);
+      return { message: '해당 요청이 존재하지 않습니다.', result: 'FAILED' };
+    }
+    if (dm.status !== DmStatus.PENDING) {
+      Logger.warn(`[${senderUid}] 해당 요청이 이미 처리되었습니다.`);
+      return { message: '해당 요청이 이미 처리되었습니다.', result: 'FAILED' };
+    }
+
+    dm.status = DmStatus.CANCELED;
+    await this.dmRepository.update(dm.id, { status: dm.status });
+    Logger.log(`[${senderUid}] 요청을 취소했습니다.`);
+
+    return { message: ' 요청을 취소했습니다.', result: 'CANCELED' };
+  }
+
+  /**
+   *  매치 요청을 처리합니다.
+   * 1. 신청자의 dm에서 진행중인 매치 요청을 찾는다.
+   *  
+   * 2. 이미 나한테 진행중인 매치 요청이 하나라도 있으면 실패 
+   * @FAIL : 이미 진행중인 매치 요청이 있습니다.
+   * 
+   * 3. 상대방이 게임중이면 실패
+   * @FAIL : 상대방이 게임중입니다.
+   * 
+   * 4. 없으면 새로운 매치 요청을 생성한다.
+   * @SUCCESS : 매치 요청 성공.
+   */
+  async handleMatchRequest(payload: any): Promise<{ result: DmResultType, reason: string, data: any }> {
+
+    const matchRequest = await this.dmRepository.findMatchRequestStatus(payload);
+    if (matchRequest) {
+      Logger.warn(`[${matchRequest.sender.name} -> ${matchRequest.receiver.name}] 이미 매치 요청이 진행중입니다.`);
+
+      return { 
+        result: DmResultType.FAIL, 
+        reason: '이미 매치 요청이 진행중입니다.',
+        data: matchRequest 
+      };
+    }
+
+    const receiver = await this.dmRepository.findUserBy({ uid: payload.receiverUid });
+    if (receiver.status !== UserStatus.ONLINE) {
+      Logger.warn(`상대방 상태 : [${receiver.status}]`);
+      return {
+        result: DmResultType.FAIL,
+        reason: `상대방 상태 : [${receiver.status}]`,
+        data: receiver,
+      };
+    }
+
+    const dm = await this.dmRepository.createNewMatchRequest(payload);
+    const result = await this.dmRepository.save(dm);
+
+    return {
+      result: DmResultType.SUCCESS,
+      reason: `매치 요청 성공.`,
+      data: await this.dmRepository.findDmLogById(result.id) 
+    };
+  }
 }

@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
@@ -40,13 +41,27 @@ export class UserController {
   }
 
   @Get('friends')
-  findFriends(@GetUser() user: User) {
-    return this.usersService.findFriends(user);
+  async findFriends(@GetUser() user: User) {
+    const result = await this.usersService.findFriends(user);
+    console.log(result);
+    return result;
+  }
+
+  @Get('friends/all')
+  findAllFriendships() {
+    return this.usersService.findAllFriendships();
   }
 
   @Post('friends')
   createFriendship(@GetUser() user: User, @Body() body) {
-    return this.usersService.createFriendship(body);
+    const { targetUid } = body;
+    return this.usersService.createFriendship(user, targetUid);
+  }
+
+  @Delete('friends')
+  deleteFriendship(@GetUser() user: User, @Body() body) {
+    const { targetUid } = body;
+    return this.usersService.deleteFriendship(user, targetUid);
   }
 
   @Get(':id')

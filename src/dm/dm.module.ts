@@ -6,16 +6,17 @@ import { DM } from './entities/dm.entity';
 import { User } from 'src/user/entities/user.entity';
 import { AuthModule } from 'src/auth/auth.module';
 import { DmController } from './dm.controller';
+import { dmRepository } from './dm.repository';
+import { Friendship } from 'src/user/entities/friendship.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      DM, User,
+      DM, User, Friendship,
     ]),
     AuthModule,
   ],
   controllers: [DmController],
-  providers: [DmGateway, DmService],
-  // exports: [DmService, DmGateway],
+  providers: [DmGateway, DmService, dmRepository],
 })
 export class DmModule {}

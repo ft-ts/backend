@@ -1,0 +1,7 @@
+export enum DmStatus {
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  REJECTED = 'REJECTED',
+  CANCELED = 'CANCELED',
+  SENT = 'SENT',
+}

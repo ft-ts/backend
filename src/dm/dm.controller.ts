@@ -10,7 +10,7 @@ export class DmController {
 
   @Get()
   getAllDmLog(@GetUser() user: any) {
-    return this.dmService.getAllDmLog(user.uid);
+    return this.dmService.getAllMyDmLog(user.uid);
   }
 
   @Get('/with/:targetName')

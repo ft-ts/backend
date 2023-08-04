@@ -6,11 +6,9 @@ import {
   BaseEntity,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
+import { DmType } from '../enum/dm.type';
+import { DmStatus } from '../enum/dm-status.enum';
 
-enum DmType {
-  DM,
-  NOTIFICATION,
-}
 
 @Entity({ name: 'DM' })
 export class DM extends BaseEntity {
@@ -28,6 +26,9 @@ export class DM extends BaseEntity {
 
   @Column({ nullable: false, default: DmType.DM })
   type: DmType;
+
+  @Column({ nullable: false, default: DmStatus.SENT })
+  status: DmStatus;
 
   @Column({ nullable: true, default: "" })
   data: string;
