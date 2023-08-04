@@ -155,7 +155,7 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
     await this.channelService.muteMember(user, payload.channelId , targetUser.uid);
-    this.server.to(`channel-${payload.channelId}`).emit('updateMemberState', { channelId: payload.channelId, targetUser: targetUser.name });
+    this.server.to(`channel-${payload.channelId}`).emit('updateMemberState', `${targetUser.name} is muted in the channel ${payload.channelId}`);
   }
 
   @SubscribeMessage('banMember')

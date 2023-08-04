@@ -12,7 +12,6 @@ import { AlreadyPresentExeption, InvalidPasswordException, MissingPasswordExcept
 from 'src/common/exceptions/chat.exception';
 import { Cm } from './entities/cm.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
-import { get } from 'http';
 
 @Injectable()
 export class ChannelService {
@@ -333,11 +332,16 @@ export class ChannelService {
       throw new NotAuthorizedException('User is not the admin of the channel');
     }
     const channel = await this.getChannelById(channelId);
-    if (this.isMutedMember(user, channel)) {
-      throw new NotAuthorizedException('User is muted');
+    if (await this.isMutedMember(user, channel)) {
+      throw new NotAuthorizedException('Member is already muted');
     }
     else {
-      throw new NotAuthorizedException('User has already been muted');
+      channel.muted_uid.push(targetId);
+      await this.channelRepository.save(channel);
+      setTimeout(async () => {
+        channel.muted_uid = channel.muted_uid.filter((uid) => uid !== targetId);
+        await this.channelRepository.save(channel);
+      }, this.muteDuration);
     }
   }
 
@@ -413,7 +417,7 @@ export class ChannelService {
   async createMessage(user: User, createMessageDto: CreateMessageDto): Promise<Cm | undefined> {
     const channel = await this.validateChannelAndMember(user, createMessageDto.channelId);
     if (await this.isMutedMember(user, channel)) {
-      throw new NotAuthorizedException('User is muted');
+      throw new NotAuthorizedException('You are muted');
     }
     if (!createMessageDto.content) {
       throw new NotFoundException('Content is empty');
