@@ -2,7 +2,8 @@ import { WebSocketGateway, SubscribeMessage, MessageBody, ConnectedSocket, WebSo
 import { DmService } from './dm.service';
 import { Socket, Server } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
-import { DmType } from './enum/DM.enum';
+import { DmType } from './enum/dm.type';
+import { DmResultType } from './enum/dm.result';
 
 @WebSocketGateway({
   namespace: 'dm',
@@ -24,7 +25,6 @@ export class DmGateway {
       client.disconnect();
       return;
     }
-    console.log('dm/handleConnection', client.id, client.data);
     await client.join(`dm-${client.data.uid}`);
     this.checkRequests(client);
   }
@@ -42,33 +42,30 @@ export class DmGateway {
   }
 
   @SubscribeMessage('dm/request')
-  async sendFriendRequest(client: Socket, payload: any) {
-
+  async sendRequest(client: Socket, payload: any) {
     payload.senderUid = client.data.uid;
 
-    if (payload.request_type === DmType.FRIEND) {
-      const friendRequest = await this.dmService.handleFriendRequest(payload);
-      if (friendRequest.result !== 'FAILED') {
+    if (payload.request_type === DmType.MATCH) {
+      const matchRequest = await this.dmService.handleMatchRequest(payload);
+      if (matchRequest.result !== DmResultType.FAIL) {
         this.server
           .to(`dm-${payload.receiverUid}`)
-          .emit("dm/request", friendRequest);
+          .emit("dm/request", matchRequest);
       }
-      client.emit("dm/request", friendRequest);
+      client.emit("dm/request", matchRequest);
     }
-    // if (request_type === notiType.MATCH)
-    // await this.dmService.handleMatchRequest(payload);
   }
 
   @SubscribeMessage('dm/response')
   async sendResponse(client: Socket, payload: any) {
     payload.senderUid = client.data.uid;
 
-    const result = await this.dmService.handleResponse(payload);
-    if (result.result === 'ACCEPTED' || result.result === 'REJECTED')
+    const dmResponse = await this.dmService.handleResponse(payload);
+    if (dmResponse.result === DmResultType.FAIL || dmResponse.result === DmResultType.SUCCESS)
       this.server
         .to(`dm-${payload.receiverUid}`)
-        .emit('dm/response', result);
-    client.emit('dm/response', result);
+        .emit('dm/response', dmResponse);
+    client.emit('dm/response', dmResponse);
   }
 
   @SubscribeMessage('dm/request/cancel')
@@ -90,5 +87,4 @@ export class DmGateway {
     console.log('dm/checkRequests', requests);
     client.emit('dm/request', requests);
   }
-
 }

@@ -18,6 +18,5 @@ import { Friendship } from 'src/user/entities/friendship.entity';
   ],
   controllers: [DmController],
   providers: [DmGateway, DmService, dmRepository],
-  // exports: [DmService, DmGateway],
 })
 export class DmModule {}

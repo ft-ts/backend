@@ -6,7 +6,7 @@ import {
   BaseEntity,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
-import { DmType } from '../enum/DM.enum';
+import { DmType } from '../enum/dm.type';
 import { DmStatus } from '../enum/dm-status.enum';
 
 

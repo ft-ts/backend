@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { User } from './entities/user.entity';
@@ -60,68 +61,75 @@ export class UserService {
     };
   }
 
-  async createFriendship(body) {
-    const user1 = await this.usersRepository.findOne({
-      where: { name: body.user1 },
+  /**
+   * [ 친구 요청 ] 단방향
+   * 1. 이미 친구인지 확인
+   * @FAIL : 이미 친구입니다.
+   * 
+   * 2. 없으면 새로운 친구 요청을 생성한다.
+   * @SUCCESS : 친구 요청 성공.
+   */
+  async createFriendship(userInfo, body): Promise<{}> {
+    const user = await this.usersRepository.findOne({
+      where: { uid: userInfo.uid },
       relations: ['friendships'],
     });
     const user2 = await this.usersRepository.findOne({
       where: { name: body.user2 },
       relations: ['friendships'],
     });
-    if (!user1 || !user2) throw new NotFoundException(`User not found`);
+    if (!user || !user2) throw new NotFoundException(`User not found`);
 
-    // Check if the friendship already exists
-    const existingFriendship1 = await this.friendshipRepository
+    const existingFriendship = await this.friendshipRepository
       .createQueryBuilder('friendship')
-      .where('friendship.user = :userId1 AND friendship.friend = :friendId1', {
-        userId1: user1.id,
-        friendId1: user2.id,
+      .where('friendship.user = :userId AND friendship.friend = :friendId', {
+        userId: user.id,
+        friendId: user2.id,
       })
       .getOne();
 
-    const existingFriendship2 = await this.friendshipRepository
-      .createQueryBuilder('friendship')
-      .where('friendship.user = :userId2 AND friendship.friend = :friendId2', {
-        userId2: user2.id,
-        friendId2: user1.id,
-      })
-      .getOne();
-
-    if (existingFriendship1 || existingFriendship2) {
+    if (existingFriendship) {
       throw new BadRequestException('The friendship already exists');
     }
 
-    const friendship1 = new Friendship();
-    friendship1.user = user1;
-    friendship1.friend = user2;
-    await this.friendshipRepository.save(friendship1);
-
-    const friendship2 = new Friendship();
-    friendship2.user = user2;
-    friendship2.friend = user1;
-    await this.friendshipRepository.save(friendship2);
+    const friendship = this.friendshipRepository.create({
+      user: user,
+      friend: user2,
+    });
+    await this.friendshipRepository.save(friendship);
 
     const friendships = await this.friendshipRepository
       .createQueryBuilder('friendship')
       .leftJoinAndSelect('friendship.user', 'user')
       .leftJoinAndSelect('friendship.friend', 'friend')
-      .where('friendship.user = :userId1 AND friendship.friend = :friendId1', {
-        userId1: user1.id,
-        friendId1: user2.id,
+      .where('friendship.user = :userId AND friendship.friend = :friendId', {
+        userId: user.id,
+        friendId: user2.id,
       })
-      .orWhere(
-        'friendship.user = :userId2 AND friendship.friend = :friendId2',
-        {
-          userId2: user2.id,
-          friendId2: user1.id,
-        },
-      )
       .select(['friendship.id', 'user.name', 'friend.name'])
       .getMany();
 
     return friendships;
   }
+
+  // 친구 추가 uid로 고치기
+  async deleteFriendship(userInfo, body) {
+    const { targetUid } = body;
+    const friendship = await this.friendshipRepository
+      .createQueryBuilder('friendship')
+      .leftJoinAndSelect('friendship.user', 'user')
+      .leftJoinAndSelect('friendship.friend', 'friend')
+      .where('(user.uid = :uid AND friend.uid = :friendUid)', {
+        uid: userInfo.uid,
+        friendUid: targetUid,
+      })
+      .getOne();
+    if (!friendship) throw new NotFoundException(`Friendship not found`);
+
+    Logger.log(`[UserService deleteFriendship] ${friendship.user.name}(${friendship.user.uid})와 ${friendship.friend.name}(${friendship.friend.uid})의 친구관계를 삭제합니다.`);
+    return await this.friendshipRepository.delete(friendship.id);
+  }
+
 
   async findAllFriendships() {
     return await this.friendshipRepository

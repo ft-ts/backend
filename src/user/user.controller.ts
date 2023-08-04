@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
@@ -53,7 +54,12 @@ export class UserController {
 
   @Post('friends')
   createFriendship(@GetUser() user: User, @Body() body) {
-    return this.usersService.createFriendship(body);
+    return this.usersService.createFriendship(user, body);
+  }
+
+  @Delete('friends')
+  deleteFriendship(@GetUser() user: User, @Body() body) {
+    return this.usersService.deleteFriendship(user, body);
   }
 
   @Get(':id')
