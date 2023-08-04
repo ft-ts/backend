@@ -1,7 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { PongService } from './pong.service';
-import { CreatePongDto } from './dto/create-pong.dto';
-import { UpdatePongDto } from './dto/update-pong.dto';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { PongRepository } from './pong.repository';
 import { GetUser } from 'src/common/decorators';
 import { AtGuard } from 'src/auth/auth.guard';
