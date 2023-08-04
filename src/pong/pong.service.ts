@@ -6,11 +6,12 @@ import { MatchType } from "./enum/matchType.enum";
 
 @Injectable()
 export class PongService{
+  private ladderQueue: Array<Socket>;
   constructor(
     private readonly gameService: GameService,
-    private ladderQueue: Array<Socket> = new Array<Socket>(),
   ){
     console.log('GameService constructor');
+    this.ladderQueue = new Array<Socket>();
     setInterval(() => {
       this.matchLadder();
     }, 1000);
@@ -43,6 +44,7 @@ export class PongService{
       user1_elo: 0,
       user2_elo: 0,
       winner_id: 0,
+      loser_id: 0,
       start_date: new Date(),
       interval: null,
     }
@@ -53,9 +55,8 @@ export class PongService{
     client: Socket,
   ){
     console.log('joinLadder');
-    if (this.ladderQueue.indexOf(client) > -1){
+    if (this.ladderQueue.indexOf(client) < 0){
       this.ladderQueue.push(client);
-      client.emit('pong/ladder/join');
     } else {
       client.emit('pong/ladder/join/fail');
     }
@@ -73,12 +74,16 @@ export class PongService{
 
   private async matchLadder(
   ){
-    const client1: Socket = this.ladderQueue.shift();
-    const client2: Socket = this.ladderQueue.shift();
-    if (client1 && client2){
-      console.log('match ladder success');
-      client2.join(`pong_${client1.data.uid}`);
-      await this.createGame(client1, client2, MatchType.LADDER);
+    console.log('matchLadder', this.ladderQueue.length);
+    
+    if (this.ladderQueue.length >= 2){
+      const client1: Socket = this.ladderQueue.shift();
+      const client2: Socket = this.ladderQueue.shift();
+      if (client1 && client2){
+        console.log('match ladder success');
+        client2.join(`pong_${client1.data.uid}`);
+        await this.createGame(client1, client2, MatchType.LADDER);
+      }
     }
   }
 }

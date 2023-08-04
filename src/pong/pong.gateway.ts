@@ -12,6 +12,7 @@ import { Socket, Server } from 'socket.io';
 import { PongService } from './pong.service';
 import { GameService } from './game/game.service';
 import { MatchType } from './enum/matchType.enum';
+import { AuthService } from 'src/auth/auth.service';
 
 @WebSocketGateway({
   namespace: 'pong',
@@ -25,21 +26,29 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
   private server: Server;
   private rooms: any;
+  private uidSocketMap: Map<string, Socket>;
   constructor(
     private readonly pongService: PongService,
     private readonly gameService: GameService,
-    private uidSocketMap: Map<string, Socket> = new Map<string, Socket>(),
+    private readonly authService: AuthService,
   ) {
     console.log('constructor');
+
   }
 
-  afterInit(server: Server) {
+  afterInit(server: any) {
     console.log('afterInit');
     this.server = server;
-    this.rooms = server.sockets.adapter.rooms;
+    this.rooms = server.adapter.rooms;
+    this.uidSocketMap = new Map<string, Socket>();
   }
 
   handleConnection(client: Socket) {
+    if (!this.authService.validateSocket(client))
+    {
+      client.disconnect();
+      return ;
+    }
     console.log('handleConnection', client.data.uid);
     client.join(`pong_${client.data.uid}`);
     this.uidSocketMap.set(client.data.uid, client);
@@ -100,6 +109,7 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     ** @payload : { uid: string }
     */
    const opponent: Socket = this.uidSocketMap.get(payload.uid);
+  // const opponent: Socket = this.server.sockets.sockets.get(payload.uid);
    if (this.rooms.has(`pong_${payload.uid}`) &&
        this.rooms.get(`pong_${payload.uid}`).size === 1){
       client.join(`pong_${payload.uid}`);

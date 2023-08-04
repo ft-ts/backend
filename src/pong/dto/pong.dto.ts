@@ -13,6 +13,7 @@ export interface MatchInfoDto {
   user1_elo: number;
   user2_elo: number;
   winner_id: number;
+  loser_id: number;
   start_date: Date;
   interval: NodeJS.Timeout;
 }
@@ -23,14 +24,14 @@ export interface GameInfo {
   ball: Ball;
 }
 
-export interface updateDto {
+export interface UpdateMatchInfoDto {
+  match_id: string;
   user1_id: number;
   user2_id: number;
-  match_type: string;
+  match_type: MatchType;
   user1_score: number;
   user2_score: number;
-  user1_elo: number;
-  user2_elo: number;
   winner_id: number;
+  loser_id: number;
   timestamp: Date;
 }

@@ -7,6 +7,9 @@ export class MatchInfoEntity {
   id: number;
 
   @Column({ nullable: false })
+  match_id: string;
+
+  @Column({ nullable: false })
   user1_id: number;
 
   @Column({ nullable: false })
@@ -23,6 +26,9 @@ export class MatchInfoEntity {
 
   @Column({ nullable: false })
   winner_id: number;
+
+  @Column({ nullable: false })
+  loser_id: number;
 
   @Column()
   timestamp: Date;
