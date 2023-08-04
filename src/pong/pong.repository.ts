@@ -1,6 +1,6 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { MatchInfoEntity } from "./entities/matchInfo.entity";
+import { MatchInfo } from "./entities/matchInfo.entity";
 import { UpdateMatchInfoDto } from "./dto/pong.dto";
 import { Injectable } from "@nestjs/common";
 import { User } from "src/user/entities/user.entity";
@@ -8,8 +8,8 @@ import { User } from "src/user/entities/user.entity";
 @Injectable()
 export class PongRepository{
   constructor(
-    @InjectRepository(MatchInfoEntity)
-    private matchInfoRepository: Repository<MatchInfoEntity>,
+    @InjectRepository(MatchInfo)
+    private matchInfoRepository: Repository<MatchInfo>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ){ }
