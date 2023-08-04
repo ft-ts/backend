@@ -54,12 +54,14 @@ export class UserController {
 
   @Post('friends')
   createFriendship(@GetUser() user: User, @Body() body) {
-    return this.usersService.createFriendship(user, body);
+    const { targetUid } = body;
+    return this.usersService.createFriendship(user, targetUid);
   }
 
   @Delete('friends')
   deleteFriendship(@GetUser() user: User, @Body() body) {
-    return this.usersService.deleteFriendship(user, body);
+    const { targetUid } = body;
+    return this.usersService.deleteFriendship(user, targetUid);
   }
 
   @Get(':id')

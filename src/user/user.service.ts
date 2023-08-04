@@ -69,13 +69,16 @@ export class UserService {
    * 2. 없으면 새로운 친구 요청을 생성한다.
    * @SUCCESS : 친구 요청 성공.
    */
-  async createFriendship(userInfo, body): Promise<{}> {
+  async createFriendship(userInfo, targetUid): Promise<{}> {
     const user = await this.usersRepository.findOne({
       where: { uid: userInfo.uid },
       relations: ['friendships'],
     });
+
+    if (user.uid === targetUid) throw new BadRequestException('Cannot add yourself as a friend');
+
     const user2 = await this.usersRepository.findOne({
-      where: { name: body.user2 },
+      where: { uid: targetUid },
       relations: ['friendships'],
     });
     if (!user || !user2) throw new NotFoundException(`User not found`);
@@ -113,8 +116,7 @@ export class UserService {
   }
 
   // 친구 추가 uid로 고치기
-  async deleteFriendship(userInfo, body) {
-    const { targetUid } = body;
+  async deleteFriendship(userInfo, targetUid) {
     const friendship = await this.friendshipRepository
       .createQueryBuilder('friendship')
       .leftJoinAndSelect('friendship.user', 'user')
@@ -136,7 +138,7 @@ export class UserService {
       .createQueryBuilder('friendship')
       .leftJoinAndSelect('friendship.user', 'user')
       .leftJoinAndSelect('friendship.friend', 'friend')
-      .select(['friendship.id', 'user.name', 'user.uid', 'friend.name', 'friend.uid',])
+      .select(['friendship.id', 'user.name', 'user.uid', 'friend.name', 'friend.uid'])
       .getMany();
   }
 }
