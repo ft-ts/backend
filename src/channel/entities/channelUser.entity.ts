@@ -14,9 +14,6 @@ export class ChannelUser {
   @JoinColumn()
   user: User;
 
-  @OneToMany(() => Cm, (cm) => cm.channelUser)
-  message: Cm[]; 
-
   @ManyToOne(() => Channel, (channel) => channel.channelUser)
   @JoinColumn()
   channel: Channel;
@@ -26,10 +23,4 @@ export class ChannelUser {
 
   @Column({ nullable: false, default: ChannelRole.NORMAL })
   role: ChannelRole;
-
-  @Column({ nullable: false, default: false })
-  is_muted: boolean;
-
-  @Column({ nullable: false, default: false })
-  is_banned: boolean;
 }
