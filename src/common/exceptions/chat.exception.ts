@@ -23,3 +23,9 @@ export class NotAuthorizedException extends HttpException {
     super(message, HttpStatus.UNAUTHORIZED);
   }
 }
+
+export class AlreadyPresentExeption extends HttpException {
+  constructor(message: string) {
+    super(message, HttpStatus.UNAUTHORIZED);
+  }
+}
