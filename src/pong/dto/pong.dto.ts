@@ -3,7 +3,7 @@ import { Ball } from '../game/entities/ball.entity';
 import { Paddle } from '../game/entities/paddle.entity';
 import { MatchType } from '../enum/matchType.enum';
 
-export interface MatchInfo {
+export interface MatchInfoDto {
   matchID: string;
   matchType: MatchType;
   user1: Socket;

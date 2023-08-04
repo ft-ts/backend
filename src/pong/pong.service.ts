@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Socket } from "socket.io";
-import { MatchInfo } from "./dto/pong.dto";
+import { MatchInfoDto } from "./dto/pong.dto";
 import { GameService } from "./game/game.service";
 import { MatchType } from "./enum/matchType.enum";
 
@@ -23,7 +23,7 @@ export class PongService{
   ){
     console.log('createGame');
     
-    const matchInfo: MatchInfo = await this.setMatchInfo(client1, client2, matchType);
+    const matchInfo: MatchInfoDto = await this.setMatchInfo(client1, client2, matchType);
     this.gameService.gameStart(client1, client2, matchInfo);
   }
   
@@ -31,10 +31,9 @@ export class PongService{
     client1: Socket,
     client2: Socket,
     matchType: MatchType,
-    ): Promise<MatchInfo>{
-    // const matchID: string = Math.random().toString(36).slice(2);
-    const matchID: string = `pong_${client1.data.uid}`;
-    const matchInfo: MatchInfo = {
+    ): Promise<MatchInfoDto>{
+    const matchID: string = Math.random().toString(36).slice(2);
+    const matchInfo: MatchInfoDto = {
       matchID: matchID,
       matchType: matchType,
       user1: client1,

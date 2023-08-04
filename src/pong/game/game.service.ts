@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Socket } from "socket.io";
-import { MatchInfo, GameInfo, updateDto } from "../dto/pong.dto";
+import { MatchInfoDto, GameInfo, updateDto } from "../dto/pong.dto";
 import { Ball } from "../game/entities/ball.entity";
 import { Paddle } from "../game/entities/paddle.entity";
 import { gameConstants} from "./game.constant";
@@ -14,7 +14,7 @@ export class GameService{
   async gameStart(
     client1: Socket,
     client2: Socket,
-    matchInfo: MatchInfo,
+    matchInfo: MatchInfoDto,
   ){
     console.log('game Init');
     const gameInfo: GameInfo = await this.setGameInfo(client1, client2);
@@ -54,7 +54,7 @@ export class GameService{
 
   private async gameLoop(
     gameInfo: GameInfo,
-    matchInfo: MatchInfo,
+    matchInfo: MatchInfoDto,
   ){
     console.log('gameLoop');
     gameInfo.ball.update();
@@ -88,7 +88,7 @@ export class GameService{
   private async endGame(
     client1: Socket,
     client2: Socket,
-    matchInfo: MatchInfo,
+    matchInfo: MatchInfoDto,
   ){
     console.log('endGame');
     matchInfo.user1_score = client1.data.paddle.score;
@@ -111,7 +111,7 @@ export class GameService{
   }
 
   private async saveGameResult(
-    matchInfo: MatchInfo,
+    matchInfo: MatchInfoDto,
   ): Promise<updateDto>{
     console.log('saveGameResult');
     const player1_new_point: number = await this.calculateEloPoint(

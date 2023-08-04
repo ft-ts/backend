@@ -2,7 +2,7 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { MatchType } from '../enum/matchType.enum';
 
 @Entity()
-export class MatchInfo {
+export class MatchInfoEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
