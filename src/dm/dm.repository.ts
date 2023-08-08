@@ -5,6 +5,7 @@ import { DM } from "./entities/dm.entity";
 import { Repository } from "typeorm";
 import { DmType } from "./enum/dm.type";
 import { DmStatus } from "./enum/dm-status.enum";
+import { Block } from "src/user/entities/block.entity";
 
 @Injectable()
 export class dmRepository {
@@ -13,12 +14,14 @@ export class dmRepository {
     private userRepository: Repository<User>,
     @InjectRepository(DM)
     private dmRepository: Repository<DM>,
+    @InjectRepository(Block)
+    private blockRepository: Repository<Block>,
   ) { }
 
   async createNewDm(payload: any) {
     return this.dmRepository.create({
       sender: await this.userRepository.findOneBy({ uid: payload.senderUid }),
-      receiver: await this.userRepository.findOneBy({ uid: payload.receiverUid }),
+      receiver: await this.userRepository.findOneBy({ uid: payload.targetUid }),
       message: payload.message,
     });
   }

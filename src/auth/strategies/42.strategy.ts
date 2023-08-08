@@ -20,7 +20,7 @@ export class FTStrategy extends PassportStrategy(Strategy, '42') {
     profile: any,
     done: VerifiedCallback,
   ) {
-    Logger.log('# FTStrategy validate');
+    Logger.debug('# FTStrategy validate');
     const { id, login, email, image } = profile._json;
     done(null, {
       uid: id,

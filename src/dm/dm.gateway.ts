@@ -4,11 +4,15 @@ import { Socket, Server } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
 import { DmType } from './enum/dm.type';
 import { DmResultType } from './enum/dm.result';
+import { Logger, UseGuards } from '@nestjs/common';
+import { CheckBlocked } from 'src/common/guards/block.guard';
+import { AtGuard } from 'src/auth/auth.guard';
 
+// @UseGuards(AtGuard) 해야하나???
 @WebSocketGateway({
   namespace: 'dm',
   cors: {
-    origin: process.env.FRONTEND,
+    origin: true,
   },
 })
 export class DmGateway {
@@ -26,21 +30,25 @@ export class DmGateway {
       return;
     }
     await client.join(`dm-${client.data.uid}`);
+    Logger.debug(`[DmGateway] ${client.data.uid} joined 'dm-${client.data.uid}'`);
     this.checkRequests(client);
   }
 
+  @UseGuards(CheckBlocked)
   @SubscribeMessage('dm/msg')
   async sendDM(client: Socket, payload: any) {
+
     payload.senderUid = client.data.uid;
 
     await this.dmService.saveDmLog(payload);
-    await client.join(`dm-${payload.receiverUid}`);
+    await client.join(`dm-${payload.targetUid}`);
     this.server
-      .to(`dm-${payload.receiverUid}`)
+      .to(`dm-${payload.targetUid}`)
       .emit('dm/msg', payload);
-    await client.leave(`dm-${payload.receiverUid}`);
+    await client.leave(`dm-${payload.targetUid}`);
   }
 
+  @UseGuards(CheckBlocked)
   @SubscribeMessage('dm/request')
   async sendRequest(client: Socket, payload: any) {
     payload.senderUid = client.data.uid;
@@ -49,7 +57,7 @@ export class DmGateway {
       const matchRequest = await this.dmService.handleMatchRequest(payload);
       if (matchRequest.result !== DmResultType.FAIL) {
         this.server
-          .to(`dm-${payload.receiverUid}`)
+          .to(`dm-${payload.targetUid}`)
           .emit("dm/request", matchRequest);
       }
       client.emit("dm/request", matchRequest);
@@ -63,7 +71,7 @@ export class DmGateway {
     const dmResponse = await this.dmService.handleResponse(payload);
     if (dmResponse.result === DmResultType.FAIL || dmResponse.result === DmResultType.SUCCESS)
       this.server
-        .to(`dm-${payload.receiverUid}`)
+        .to(`dm-${payload.targetUid}`)
         .emit('dm/response', dmResponse);
     client.emit('dm/response', dmResponse);
   }
@@ -74,7 +82,7 @@ export class DmGateway {
     const result = await this.dmService.cancelFriendRequest(payload);
     if (result.result === 'CANCELED')
       this.server
-        .to(`dm-${payload.receiverUid}`)
+        .to(`dm-${payload.targetUid}`)
         .emit('dm/request/cancel', result);
     client.emit('dm/request/cancel', result);
   }

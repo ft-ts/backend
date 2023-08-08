@@ -9,6 +9,7 @@ import { Friendship } from './entities/friendship.entity';
 import { UserRepository } from './repositories/user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Block } from './entities/block.entity';
 
 @Injectable()
 export class UserService {
@@ -16,6 +17,8 @@ export class UserService {
     private readonly usersRepository: UserRepository,
     @InjectRepository(Friendship)
     private readonly friendshipRepository: Repository<Friendship>,
+    @InjectRepository(Block)
+    private readonly blockRepository: Repository<Block>,
   ) { }
 
   async updateUser(user: User, body) {
@@ -110,7 +113,6 @@ export class UserService {
     return friendships;
   }
 
-  // 친구 추가 uid로 고치기
   async deleteFriendship(userInfo, targetUid) {
     const friendship = await this.friendshipRepository
       .createQueryBuilder('friendship')
@@ -123,7 +125,7 @@ export class UserService {
       .getOne();
     if (!friendship) throw new NotFoundException(`Friendship not found`);
 
-    Logger.log(`[UserService deleteFriendship] ${friendship.user.name}(${friendship.user.uid})와 ${friendship.friend.name}(${friendship.friend.uid})의 친구관계를 삭제합니다.`);
+    Logger.debug(`[UserService deleteFriendship] ${friendship.user.name}(${friendship.user.uid})와 ${friendship.friend.name}(${friendship.friend.uid})의 친구관계를 삭제합니다.`);
     return await this.friendshipRepository.delete(friendship.id);
   }
 
@@ -135,5 +137,105 @@ export class UserService {
       .leftJoinAndSelect('friendship.friend', 'friend')
       .select(['friendship.id', 'user.name', 'user.uid', 'friend.name', 'friend.uid'])
       .getMany();
+  }
+
+  /**
+   * @Blocked
+   */ 
+  async findBlocked(user: User) {
+    return await this.blockRepository
+      .createQueryBuilder('block')
+      .leftJoinAndSelect('block.user', 'user')
+      .leftJoinAndSelect('block.blocked', 'blocked')
+      .where('user.uid = :uid', {
+        uid: user.uid,
+      })
+      .select(['block.id', 'user.name', 'user.uid', 'blocked.name', 'blocked.uid'])
+      .getMany();
+  }
+
+  async findAllBlocked() {
+    return await this.blockRepository
+      .createQueryBuilder('block')
+      .leftJoinAndSelect('block.user', 'user')
+      .leftJoinAndSelect('block.blocked', 'blocked')
+      .select(['block.id', 'user.name', 'user.uid', 'blocked.name', 'blocked.uid'])
+      .getMany();
+  }
+
+  async createBlocked(userInfo, targetUid): Promise<{}> {
+    const user = await this.usersRepository.findOne({
+      where: { uid: userInfo.uid },
+      relations: ['blocked'],
+    });
+
+    if (user.uid === targetUid) throw new BadRequestException('Cannot block yourself');
+
+    const user2 = await this.usersRepository.findOne({
+      where: { uid: targetUid },
+      relations: ['blocked'],
+    });
+    if (!user || !user2) throw new NotFoundException(`User not found`);
+
+    const existingBlocked = await this.blockRepository
+      .createQueryBuilder('block')
+      .where('block.user = :userId AND block.blocked = :blockedId', {
+        userId: user.id,
+        blockedId: user2.id,
+      })
+      .getOne();
+
+    if (existingBlocked) {
+      throw new BadRequestException('The blocked already exists');
+    }
+
+    const blocked = this.blockRepository.create({
+      user: user,
+      blocked: user2,
+    });
+    await this.blockRepository.save(blocked);
+
+    const blocks = await this.blockRepository
+      .createQueryBuilder('block')
+      .leftJoinAndSelect('block.user', 'user')
+      .leftJoinAndSelect('block.blocked', 'blocked')
+      .where('block.user = :userId AND block.blocked = :blockedId', {
+        userId: user.id,
+        blockedId: user2.id,
+      })
+      .select(['block.id', 'user.name', 'blocked.name'])
+      .getMany();
+
+    return blocks;
+  }
+
+  async deleteBlocked(userInfo, targetUid) {
+    const blocked = await this.blockRepository
+      .createQueryBuilder('block')
+      .leftJoinAndSelect('block.user', 'user')
+      .leftJoinAndSelect('block.blocked', 'blocked')
+      .where('(user.uid = :uid AND blocked.uid = :blockedUid)', {
+        uid: userInfo.uid,
+        blockedUid: targetUid,
+      })
+      .getOne();
+    if (!blocked) throw new NotFoundException(`Blocked not found`);
+
+    Logger.debug(`[UserService deleteBlocked] ${blocked.user.name}(${blocked.user.uid})가 ${blocked.blocked.name}(${blocked.blocked.uid})를 차단합니다.`);
+    return await this.blockRepository.delete(blocked.id);
+  }
+
+  async checkBlocked(senderUid: number, targetUid: number) {
+    const result = await this.blockRepository
+      .createQueryBuilder('block')
+      .leftJoinAndSelect('block.user', 'user')
+      .leftJoinAndSelect('block.blocked', 'blocked')
+      .select(['block.id', 'user.uid', 'blocked.uid'])
+      .where('user.uid = :targetUid', { targetUid })
+      .andWhere('blocked.uid = :senderUid', { senderUid })
+      .getOne();
+    if (result) 
+      return true;
+    return false;
   }
 }

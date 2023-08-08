@@ -43,7 +43,6 @@ export class UserController {
   @Get('friends')
   async findFriends(@GetUser() user: User) {
     const result = await this.usersService.findFriends(user);
-    console.log(result);
     return result;
   }
 
@@ -64,7 +63,30 @@ export class UserController {
     return this.usersService.deleteFriendship(user, targetUid);
   }
 
-  @Get(':id')
+  @Get('block')
+  async findBlocked(@GetUser() user: User) {
+    const result = await this.usersService.findBlocked(user);
+    return result;
+  }
+
+  @Get('block/all')
+  findAllBlocked() {
+    return this.usersService.findAllBlocked();
+  }
+
+  @Post('block')
+  createBlocked(@GetUser() user: User, @Body() body) {
+    const { targetUid } = body;
+    return this.usersService.createBlocked(user, targetUid);
+  }
+
+  @Delete('block')
+  deleteBlocked(@GetUser() user: User, @Body() body) {
+    const { targetUid } = body;
+    return this.usersService.deleteBlocked(user, targetUid);
+  }
+
+  @Get(':id') // 맨 아래 있어야 함
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findOne(id);
   }

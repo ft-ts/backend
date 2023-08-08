@@ -8,6 +8,7 @@ import { UserStatus } from '../enums/userStatus.enum';
 import { Friendship } from './friendship.entity';
 import { DM } from 'src/dm/entities/dm.entity';
 import { ChannelUser } from 'src/channel/entities/channelUser.entity';
+import { Block } from './block.entity';
 
 @Entity({ name: 'users' })
 export class User {
@@ -31,6 +32,9 @@ export class User {
 
   @OneToMany(() => Friendship, friendship => friendship.user)
   friendships: Friendship[];
+
+  @OneToMany(() => Block, blocked => blocked.user)
+  blocked: Block[];
 
   @Column({ name: 'status', default: UserStatus.OFFLINE })
   status: UserStatus;
