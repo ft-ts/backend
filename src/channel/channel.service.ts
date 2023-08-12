@@ -135,6 +135,9 @@ export class ChannelService {
         role: ChannelRole.OWNER
     });
     await this.channelUserRepository.save(channelUser);
+    savedNewChannel.memberCnt = await this.getMemberCnt(savedNewChannel);
+    console.log(savedNewChannel);
+    await this.channelRepository.save(savedNewChannel);
     return savedNewChannel;
   }
 
@@ -163,10 +166,7 @@ export class ChannelService {
       where: { user: { id: user.id }, channel: { id: channel.id } },
     });
     const isFull = await this.getMemberCnt(channel) > 4;
-    if (existingUser) {
-      throw new AlreadyPresentExeption('User is already a member of the channel');
-    }
-    else if (isFull) {
+    if (isFull) {
       throw new NotAuthorizedException('Channel is full');
     }
     else if (channel.mode === ChannelMode.PROTECTED) {
@@ -176,8 +176,9 @@ export class ChannelService {
     }
     else if (channel.mode === ChannelMode.PRIVATE) {
       throw new NotAuthorizedException('Channel is private');
+    } else if (!existingUser) {
+      await this.joinChannel(user, channel);
     }
-    await this.joinChannel(user, channel);
     return channel;
   }
 
@@ -187,7 +188,10 @@ export class ChannelService {
       channel: channel,
       role: ChannelRole.NORMAL
     });
-    return await this.channelUserRepository.save(channelUser);
+    await this.channelUserRepository.save(channelUser);
+    channel.memberCnt = await this.getMemberCnt(channel);
+    await this.channelRepository.save(channel);
+    return channelUser;
   }
 
   async leaveChannel(user: User, channel: Channel): Promise<void> {
@@ -198,6 +202,8 @@ export class ChannelService {
       }
       await this.channelUserRepository.delete(channelUserToDelete.id);
     }
+    channel.memberCnt = await this.getMemberCnt(channel);
+    await this.channelRepository.save(channel);
     if (await this.getMemberCnt(channel) === 0) {
       await this.channelRepository.remove(channel);
     }
@@ -206,6 +212,7 @@ export class ChannelService {
   async getAllChannels(): Promise<Channel[]> {
     return this.channelRepository.find({
       where: { mode: Not(ChannelMode.PRIVATE) },
+      order: { id: 'DESC' },
     });
   }
 
@@ -213,6 +220,7 @@ export class ChannelService {
     const channelUsers = await this.channelUserRepository.find({
       where: { user: { id: user.id } },
       relations: ['channel'],
+      order: { id: 'DESC' },
     });
     const channels = channelUsers.map((channelUser) => channelUser.channel);
     return channels;
