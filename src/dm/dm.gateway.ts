@@ -8,7 +8,7 @@ import { Logger, UseGuards } from '@nestjs/common';
 import { CheckBlocked } from 'src/common/guards/block.guard';
 import { AtGuard } from 'src/auth/auth.guard';
 
-// @UseGuards(AtGuard) 해야하나???
+@UseGuards(AtGuard)
 @WebSocketGateway({
   namespace: 'dm',
   cors: {
@@ -34,10 +34,14 @@ export class DmGateway {
     this.checkRequests(client);
   }
 
+  async handleDisconnect(client: Socket) {
+    Logger.debug(`[DmGateway] ${client.data.uid} disconnected`);
+    this.authService.handleUserStatus(client.data.uid, false);
+  }
+
   @UseGuards(CheckBlocked)
   @SubscribeMessage('dm/msg')
   async sendDM(client: Socket, payload: any) {
-
     payload.senderUid = client.data.uid;
 
     await this.dmService.saveDmLog(payload);

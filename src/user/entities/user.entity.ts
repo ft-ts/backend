@@ -15,6 +15,7 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // uid로 수정?
   @Column({ name: 'intra_id', nullable: false, unique: true })
   uid: number;
 

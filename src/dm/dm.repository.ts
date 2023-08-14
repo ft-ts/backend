@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/user/entities/user.entity";
 import { DM } from "./entities/dm.entity";
-import { Repository } from "typeorm";
+import { EntityManager, Repository } from "typeorm";
 import { DmType } from "./enum/dm.type";
 import { DmStatus } from "./enum/dm-status.enum";
 import { Block } from "src/user/entities/block.entity";
@@ -32,6 +32,24 @@ export class dmRepository {
 
   async update(id: number, payload: any) {
     return await this.dmRepository.update(id, payload);
+  }
+
+  async findMyDmList(userUid: number) {
+    return await this.dmRepository.query(`
+    SELECT t1.id,  t1.message, t1.viewed, t1.created_at,
+          u1.intra_id  AS sender_uid, u1.name AS sender_name,
+          u2.intra_id  AS receiver_uid, u2.name AS receiver_name
+    FROM dm t1
+    LEFT JOIN dm t2
+          ON (t1."senderId" = t2."receiverId" AND t1."receiverId" = t2."senderId" AND t1.created_at < t2.created_at)
+    LEFT JOIN USERS u1
+          ON t1."senderId" = u1.id
+    LEFT JOIN USERS u2
+          ON t1."receiverId" = u2.id
+    WHERE t2.id IS NULL
+    AND (u1.intra_id = ${userUid} OR u2.intra_id = ${userUid})
+    ORDER BY t1.created_at DESC;
+    `);
   }
 
   async findAllDmLog(userUid: number) {
@@ -110,7 +128,7 @@ export class dmRepository {
   }
 
   async createNewMatchRequest(payload: any) {
-    const [ sender, receiver ] = await Promise.all([
+    const [sender, receiver] = await Promise.all([
       this.userRepository.findOneBy({ uid: payload.senderUid }),
       this.userRepository.findOneBy({ uid: payload.receiverUid }),
     ]);

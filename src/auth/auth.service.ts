@@ -48,17 +48,22 @@ export class AuthService {
     if (payload === null)
       return false;
     client.data = { email: payload.email, uid: payload.uid };
-    return await this.handleUserStatus(payload);
+    return await this.handleUserStatus(payload.uid, true);
   }
 
-  async handleUserStatus(payload: any) {
-    const user = await this.userRepository.findOneBy({ uid: payload.uid });
+  async handleUserStatus(uid: number, toOnline: boolean) {
+    const user = await this.userRepository.findOneBy({ uid });
     if (user === undefined || user === null) {
       Logger.error(`[AuthService handleUserStatus] invalid user`);
       return false;
     }
-    if (user.status === UserStatus.OFFLINE) {
+    if (user.status === UserStatus.OFFLINE && toOnline === true) {
       user.status = UserStatus.ONLINE;
+      await this.userRepository.update(user.id, { status: user.status });
+      Logger.warn(`[AuthService handleUserStatus] ${user.name}(${user.uid}) is now ${user.status}`);
+    }
+    else if (user.status === UserStatus.ONLINE && toOnline === false) {
+      user.status = UserStatus.OFFLINE;
       await this.userRepository.update(user.id, { status: user.status });
       Logger.warn(`[AuthService handleUserStatus] ${user.name}(${user.uid}) is now ${user.status}`);
     }

@@ -10,7 +10,7 @@ import { DmType } from '../enum/dm.type';
 import { DmStatus } from '../enum/dm-status.enum';
 
 
-@Entity({ name: 'DM' })
+@Entity({ name: 'dm' })
 export class DM extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
@@ -29,9 +29,6 @@ export class DM extends BaseEntity {
 
   @Column({ nullable: false, default: DmStatus.SENT })
   status: DmStatus;
-
-  @Column({ nullable: true, default: "" })
-  data: string;
 
   @Column({ name: 'viewed', default: false })
   viewed: boolean;

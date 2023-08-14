@@ -34,7 +34,7 @@ export class UserService {
   }
 
   async findAll() {
-    return await this.usersRepository.find();
+    return await this.usersRepository.find({ order: { uid: 'ASC' } });
   }
 
   async findChannelUsers() {
@@ -55,7 +55,8 @@ export class UserService {
 
   async findOne(uid: number) {
     const user = await this.usersRepository.findOneBy({ uid });
-    if (!user) throw new NotFoundException(`User ${uid} not found`);
+    if (!user)
+      throw new NotFoundException(`User not found`);
     return user;
   }
 
@@ -141,7 +142,7 @@ export class UserService {
 
   /**
    * @Blocked
-   */ 
+   */
   async findBlocked(user: User) {
     return await this.blockRepository
       .createQueryBuilder('block')
@@ -221,7 +222,7 @@ export class UserService {
       .getOne();
     if (!blocked) throw new NotFoundException(`Blocked not found`);
 
-    Logger.debug(`[UserService deleteBlocked] ${blocked.user.name}(${blocked.user.uid})가 ${blocked.blocked.name}(${blocked.blocked.uid})를 차단합니다.`);
+    Logger.debug(`[UserService deleteBlocked] ${blocked.user.name}(${blocked.user.uid})가 ${blocked.blocked.name}(${blocked.blocked.uid})에 대한 차단을 해제합니다.`);
     return await this.blockRepository.delete(blocked.id);
   }
 
@@ -234,7 +235,7 @@ export class UserService {
       .where('user.uid = :targetUid', { targetUid })
       .andWhere('blocked.uid = :senderUid', { senderUid })
       .getOne();
-    if (result) 
+    if (result)
       return true;
     return false;
   }

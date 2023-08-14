@@ -9,10 +9,16 @@ export class AtGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     Logger.debug('[AtGuard] canActivate');
 
+    
     const token =
       context.getType() === 'http'
-        ? context.switchToHttp().getRequest().headers.authorization.split('Bearer ')[1]
-        : context.switchToWs().getClient().handshake.headers.authorization;
+        ? context.switchToHttp().getRequest().headers?.authorization?.split('Bearer ')[1]
+        : context.switchToWs().getClient().handshake?.headers?.authorization;
+      
+    if (!token) {
+      Logger.debug('[AtGuard] No token');
+      throw new UnauthorizedException('No token');
+    }
 
     const user = await this.authService.validateAccessToken(token);
 

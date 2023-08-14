@@ -17,19 +17,17 @@ export class DmService {
     return await this.dmRepository.save(dm);
   }
 
-  async getAllMyDmLog(userUid: number) {
-    const result = await this.dmRepository.findAllDmLog(userUid);
+  async getMyDMList(userUid: number) {
+    const result = await this.dmRepository.findMyDmList(userUid);
     return result;
   }
 
-  async getDMLogBetween(userUid: number, targetName: string) {
-    const target = await this.dmRepository.findUserBy({ name: targetName });
-    if (!target) {
-      return null;
-    }
-    const result = await this.dmRepository.findDmLogBetween(userUid, target.uid);
+  async getDMLogBetween(userUid: number, targetUid: number) {
+    return await this.dmRepository.findDmLogBetween(userUid, targetUid);
+  }
 
-    return result;
+  async getAllDmLog(userUid: number) {
+    return await this.dmRepository.findAllDmLog(userUid);
   }
 
   async handleResponse(payload: any): Promise<{ result: DmResultType, reason: string }> {
