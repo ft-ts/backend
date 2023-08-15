@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DmType } from './enum/dm.type';
 import { dmRepository } from './dm.repository';
 import { DmStatus } from './enum/dm-status.enum';
@@ -17,19 +17,17 @@ export class DmService {
     return await this.dmRepository.save(dm);
   }
 
-  async getAllMyDmLog(userUid: number) {
-    const result = await this.dmRepository.findAllDmLog(userUid);
+  async getMyDMList(userUid: number) {
+    const result = await this.dmRepository.findMyDmList(userUid);
     return result;
   }
 
-  async getDMLogBetween(userUid: number, targetName: string) {
-    const target = await this.dmRepository.findUserBy({ name: targetName });
-    if (!target) {
-      return null;
-    }
-    const result = await this.dmRepository.findDmLogBetween(userUid, target.uid);
+  async getDMLogBetween(userUid: number, targetUid: number) {
+    return await this.dmRepository.findDmLogBetween(userUid, targetUid);
+  }
 
-    return result;
+  async getAllDmLog(userUid: number) {
+    return await this.dmRepository.findAllDmLog(userUid);
   }
 
   async handleResponse(payload: any): Promise<{ result: DmResultType, reason: string }> {
@@ -51,13 +49,13 @@ export class DmService {
 
       dm.status = DmStatus.ACCEPTED;
       await this.dmRepository.update(dm.id, { status: dm.status });
-      Logger.log(`${dm.receiver.name}(${dm.receiver.uid})가 ${dm.sender.name}(${dm.sender.uid})의 ${dm.type} 요청(${dm.id})을 수락했습니다.`);
+      Logger.debug(`${dm.receiver.name}(${dm.receiver.uid})가 ${dm.sender.name}(${dm.sender.uid})의 ${dm.type} 요청(${dm.id})을 수락했습니다.`);
 
       return { reason: '요청을 수락했습니다.', result: DmResultType.SUCCESS };
     } else if (response === 'REJECT') {
       dm.status = DmStatus.REJECTED;
       await this.dmRepository.update(dm.id, { status: dm.status });
-      Logger.log(`[${senderUid}] 요청을 거절했습니다.`);
+      Logger.debug(`[${senderUid}] 요청을 거절했습니다.`);
 
       return { reason: '요청을 거절했습니다.', result: DmResultType.SUCCESS };
     }
@@ -83,7 +81,7 @@ export class DmService {
 
     dm.status = DmStatus.CANCELED;
     await this.dmRepository.update(dm.id, { status: dm.status });
-    Logger.log(`[${senderUid}] 요청을 취소했습니다.`);
+    Logger.debug(`[${senderUid}] 요청을 취소했습니다.`);
 
     return { message: ' 요청을 취소했습니다.', result: 'CANCELED' };
   }

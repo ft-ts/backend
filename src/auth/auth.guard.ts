@@ -1,5 +1,4 @@
 import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { Observable } from 'rxjs';
 import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
@@ -8,12 +7,18 @@ export class AtGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    Logger.log('# AtGuard canActivate');
+    Logger.debug('[AtGuard] canActivate');
 
+    
     const token =
       context.getType() === 'http'
-        ? context.switchToHttp().getRequest().headers.authorization.split('Bearer ')[1]
-        : context.switchToWs().getClient().handshake.headers.authorization;
+        ? context.switchToHttp().getRequest().headers?.authorization?.split('Bearer ')[1]
+        : context.switchToWs().getClient().handshake?.headers?.authorization;
+      
+    if (!token) {
+      Logger.debug('[AtGuard] No token');
+      throw new UnauthorizedException('No token');
+    }
 
     const user = await this.authService.validateAccessToken(token);
 
@@ -31,15 +36,4 @@ export class AtGuard implements CanActivate {
 
     return true;
   }
-
-  //   if (context.getType() === 'http') {
-  //     const request = context.switchToHttp().getRequest();
-  //     return this.authService.validateRequest(request);
-  //   } else if (context.getType() === 'ws') {
-  //     const client = context.switchToWs().getClient();
-  //     return this.authService.validateSocket(client);
-  //   } else {
-  //     throw new UnauthorizedException(`Invalid context type : ${context.getType()}`);
-  //   }
-  // }
 }

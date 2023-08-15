@@ -8,7 +8,7 @@ export class RtGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    Logger.log('# RtGuard canActivate');
+    Logger.debug('# RtGuard canActivate');
   
     const token =
       context.getType() === 'http'

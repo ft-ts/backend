@@ -15,7 +15,7 @@ export class LoginService {
   
   onModuleInit() {
     this.loginRepository.update({}, { status: UserStatus.OFFLINE });
-    Logger.log('[AuthService onModuleInit] All Users Status => OFFLINE');
+    Logger.debug('[AuthService onModuleInit] All Users Status => OFFLINE');
   }
 
   async getTokens(userInfo: User): Promise<Tokens> {
@@ -35,7 +35,7 @@ export class LoginService {
   }
 
   async validateUser(userInfo): Promise<Tokens> {
-    Logger.log('# AuthService validateUser');
+    Logger.debug('# AuthService validateUser');
 
     try {
       const existUser: User = await this.loginRepository.findOneBy({
@@ -66,13 +66,13 @@ export class LoginService {
       return tokens;
 
     } catch (error) {
-      Logger.log('# AuthService validateUser Error', error);
+      Logger.debug('# AuthService validateUser Error', error);
       throw new InternalServerErrorException('Something went wrong at validateUser :(');
     }
   }
 
   async updateRefreshToken(user: User, hashedRt: string): Promise<void> {
-    Logger.log('# AuthService updateRefreshToken');
+    Logger.debug('# AuthService updateRefreshToken');
 
     try {
       const _user = await this.loginRepository.findOneBy({
@@ -81,7 +81,7 @@ export class LoginService {
       if (!_user) throw new ForbiddenException('Access Denied (User Not Found)');
       await this.loginRepository.update(user.id, { hashedRt });
     } catch (error) {
-      Logger.log('# AuthService updateRefreshToken Error');
+      Logger.debug('# AuthService updateRefreshToken Error');
       throw new InternalServerErrorException('Something went wrong at updateRefreshToken :(');
     }
   }
@@ -97,14 +97,14 @@ export class LoginService {
         status: UserStatus.OFFLINE,
       });
     } catch (error) {
-      Logger.log('# AuthService logout Error', error);
+      Logger.debug('# AuthService logout Error', error);
       throw new InternalServerErrorException('Something went wrong :(');
     }
     return { message: 'Logout Success' };
   }
 
   async refreshTokens(user: User): Promise<Tokens> {
-    Logger.log('# AuthService refreshTokens');
+    Logger.debug('# AuthService refreshTokens');
     const _user = await this.loginRepository.findOneBy({
       uid: user.uid,
     });
@@ -136,7 +136,7 @@ export class LoginService {
   }
 
   async createQRCode(user: User): Promise<string> {
-    Logger.log('# AuthService createQRCode');
+    Logger.debug('# AuthService createQRCode');
     let data: string;
     try {
       const { qrSecret } = await this.loginRepository.findOneBy({ uid: user.uid });
@@ -189,7 +189,7 @@ export class LoginService {
   }
 
   async loginByDemoUser(userInfo: User): Promise<Tokens> {
-    Logger.log('# AuthService loginBy "🤮Demo" User');
+    Logger.debug('# AuthService loginBy "🤮Demo" User');
 
     try {
       const existUser: User = await this.loginRepository.findOneBy({
@@ -218,7 +218,7 @@ export class LoginService {
 
       return tokens;
     } catch (error) {
-      Logger.log('# AuthService loginBy "🤮Demo" User Error', error);
+      Logger.debug('# AuthService loginBy "🤮Demo" User Error', error);
       throw new InternalServerErrorException('Something went wrong at validate "🤮Demo" User :(');
     }
   }

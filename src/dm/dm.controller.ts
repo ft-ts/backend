@@ -8,13 +8,18 @@ import { AtGuard } from "src/auth/auth.guard";
 export class DmController {
   constructor(private readonly dmService: DmService) {}
 
-  @Get()
-  getAllDmLog(@GetUser() user: any) {
-    return this.dmService.getAllMyDmLog(user.uid);
+  @Get('/list')
+  getMyDMList(@GetUser() user: any) {
+    return this.dmService.getMyDMList(user.uid);
   }
 
-  @Get('/with/:targetName')
-  getDMLogBetween(@GetUser() user: any, @Param('targetName') targetName: string) {
-    return this.dmService.getDMLogBetween(user.uid, targetName);
+  @Get('/all')
+  getAllDmLog(@GetUser() user: any) {
+    return this.dmService.getAllDmLog(user.uid);
+  }
+
+  @Get('/:uid')
+  getDMLogBetween(@GetUser() user: any, @Param('uid') targetUid: number) {
+    return this.dmService.getDMLogBetween(user.uid, targetUid);
   }
 }
