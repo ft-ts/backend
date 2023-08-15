@@ -12,9 +12,10 @@ interface UserSocketMap {
 @WebSocketGateway({
   namespace: 'channels', 
   cors: {
-    origin: process.env.FRONT_PORT,
+    origin: true,
   },
 })
+
 export class ChannelGateway {
   constructor(
     private readonly channelService: ChannelService,
@@ -37,9 +38,10 @@ export class ChannelGateway {
     for (const channel of userChannels) {
       await client.join(`channel-${channel.id}`);
       const messages = await this.channelService.getChannelMessages(channel);
-      await client.emit('getChannelMessages', {channelId: channel.id, messages: messages});
+      await client.emit('getAllChannels');
+      await client.emit('getMyChannels');
     }
-    console.log('handleConnection', user.name, client.data.uid);
+    console.log('handleConnection Channel', user.name, client.data.uid);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -67,6 +69,7 @@ export class ChannelGateway {
     const channel = await this.channelService.createChannel(user, createGroupChannelDto);
     await client.join(`channel-${channel.id}`);
     await this.server.to(`channel-${channel.id}`).emit('createChannel', channel);
+    console.log('createChannel', user.name, channel.id);
   }
 
   @SubscribeMessage('enterChannel')
@@ -89,6 +92,8 @@ export class ChannelGateway {
   @SubscribeMessage('getAllChannels')
   async getAllChannels(@ConnectedSocket() client: Socket) {
     const channels = await this.channelService.getAllChannels();
+    console.log('getAllChannels', channels);
+    
     await client.emit('getAllChannels', channels);
   }
 

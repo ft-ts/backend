@@ -11,6 +11,9 @@ export class Channel {
   @OneToMany(() => ChannelUser, (channelUser) => channelUser.channel)
   channelUser: ChannelUser[];
 
+  @Column({ nullable: false, default: 0 })
+  memberCnt: number;
+
   @OneToMany(() => Cm, (cm) => cm.channel)
   message: Cm[];
 
