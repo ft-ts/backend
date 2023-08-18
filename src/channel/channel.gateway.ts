@@ -37,8 +37,6 @@ export class ChannelGateway {
     this.userSocketMap[client.data.uid] = client;
     for (const channel of userChannels) {
       await client.join(`channel-${channel.id}`);
-      await client.emit('getAllChannels');
-      await client.emit('getMyChannels');
     }
     console.log('handleConnection Channel', user.name, client.data.uid);
   }
