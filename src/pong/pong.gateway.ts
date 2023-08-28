@@ -17,7 +17,7 @@ import { AuthService } from 'src/auth/auth.service';
 @WebSocketGateway({
   namespace: 'pong',
   cors: {
-    origin: process.env.FRONTEND,
+    origin: true,
   },
 })
 export class PongGateway
@@ -49,13 +49,13 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
       client.disconnect();
       return ;
     }
-    console.log('handleConnection', client.data.uid);
+    console.log('pong handleConnection', client.data.uid);
     client.join(`pong_${client.data.uid}`);
     this.uidSocketMap.set(client.data.uid, client);
   }
 
   handleDisconnect(client: Socket) {
-    console.log('handleDisconnect', client.data.uid);
+    console.log('pong handleDisconnect', client.data.uid);
     client.leave(`pong_${client.data.uid}`);
     this.uidSocketMap.delete(client.data.uid);
   }
@@ -65,7 +65,7 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
   ){
-    console.log('pong/match', payload);
+    console.log('pong/ladder/join', payload);
    /*
     **
     */
@@ -78,7 +78,7 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
   ){
-    console.log('pong/cancle', payload);
+    console.log('pong/ladder/cancle', payload);
    /*
     **
     */

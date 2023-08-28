@@ -4,7 +4,6 @@ import { Paddle } from '../game/entities/paddle.entity';
 import { MatchType } from '../enum/matchType.enum';
 
 export interface MatchInfoDto {
-  matchID: string;
   matchType: MatchType;
   user1: Socket;
   user2: Socket;
@@ -25,13 +24,10 @@ export interface GameInfo {
 }
 
 export interface UpdateMatchInfoDto {
-  match_id: string;
-  user1_id: number;
-  user2_id: number;
+  winner_id: string;
+  loser_id: string;
+  winner_score: number;
+  loser_score: number;
   match_type: MatchType;
-  user1_score: number;
-  user2_score: number;
-  winner_id: number;
-  loser_id: number;
   timestamp: Date;
 }

@@ -33,9 +33,8 @@ export class PongService{
     client2: Socket,
     matchType: MatchType,
     ): Promise<MatchInfoDto>{
-    const matchID: string = Math.random().toString(36).slice(2);
+    // const matchID: string = Math.random().toString(36).slice(2);
     const matchInfo: MatchInfoDto = {
-      matchID: matchID,
       matchType: matchType,
       user1: client1,
       user2: client2,
