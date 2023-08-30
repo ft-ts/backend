@@ -4,6 +4,7 @@ import { AuthService } from 'src/auth/auth.service';
 import { ChannelService } from './channel.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { InvalidPasswordException, NotAuthorizedException, NotFoundException } from 'src/common/exceptions/chat.exception';
 
 interface UserSocketMap {
   [userUid: number]: Socket;
@@ -30,6 +31,7 @@ export class ChannelGateway {
   async handleConnection(@ConnectedSocket() client: Socket) {
     if (!(await this.authService.validateSocket(client))) {
       client.disconnect();
+      console.log('handleConnection Invalid', client.data.uid);
       return;
     }
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
@@ -39,6 +41,7 @@ export class ChannelGateway {
       await client.join(`channel-${channel.id}`);
     }
     console.log('handleConnection Channel', user.name, client.data.uid);
+    client.emit('handleConnection', user);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -64,25 +67,37 @@ export class ChannelGateway {
     @MessageBody() createGroupChannelDto: CreateChannelDto) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.createChannel(user, createGroupChannelDto);
+    await this.server.emit('channelUpdate', channel);
     await client.join(`channel-${channel.id}`);
     await this.server.to(`channel-${channel.id}`).emit('createChannel', channel);
-    console.log('createChannel', user.name, channel.id);
   }
 
   @SubscribeMessage('enterChannel')
-  async enterChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
-    const user = await this.channelService.getAuthenticatedUser(client.data.uid);
-    const channel = await this.channelService.enterChannel(user, payload.channelId, payload.password);
-    await client.join(`channel-${channel.id}`);
-    this.server.to(`channel-${channel.id}`).emit('enterChannel', { channelId: channel.id, user: user.name });
+  async enterChannel(socket: Socket, payload: { channelId: number, uid: number, password: string }) {
+  try {
+    const { channelId, uid, password } = payload;
+    const user = await this.channelService.getAuthenticatedUser(uid);
+    const channel = await this.channelService.enterChannel(user, channelId, password);
+    socket.emit('enterChannel', { channel });
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      socket.emit('error', { message: 'Channel not found' });
+    } else if (error instanceof NotAuthorizedException) {
+      socket.emit('error', { message: error.message });
+    } else if (error instanceof InvalidPasswordException) {
+      socket.emit('error', { message: error.message });
+    } else {
+      socket.emit('error', { message: 'Failed to enter channel' });
+    }
   }
-
+}
   @SubscribeMessage('leaveChannel')
   async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.leaveChannel(user, channel);
     await client.leave(`channel-${payload.channelId}`);
+    await this.server.emit('channelUpdate', channel);
     await this.server.to(`channel-${payload.channelId}`).emit('leaveChannel', { channelId: payload.channelId, user: user.name });
   }
 
@@ -205,12 +220,14 @@ export class ChannelGateway {
   async inviteUserToChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUid);
-    await this.channelService.inviteUserToChannel(user, payload.channelId , targetUser);
+    const channel = await this.channelService.getChannelById(payload.channelId);
+    await this.channelService.inviteUserToChannel(user, channel , targetUser);
     const targetUserSocket = await this.userSocketMap[targetUser.uid];
     if (!!targetUserSocket) {
       console.log('inviteUserToChannel', targetUserSocket.data.uid);
       await targetUserSocket.join(`channel-${payload.channelId}`);
     }
+    await this.server.emit('channelUpdate', channel);
     this.server.to(`channel-${payload.channelId}`).emit('inviteUserToChannel', { channelId: payload.channelId, inviter: user.name, invitee: targetUser.name });
   }
   
@@ -221,12 +238,13 @@ export class ChannelGateway {
   async createMessage(client: Socket, createMessageDto: CreateMessageDto) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const message = await this.channelService.createMessage(user, createMessageDto);
-    this.server.to(`channel-${createMessageDto.channelId}`).emit('sendMessage', message);
+    await this.server.to(`channel-${createMessageDto.channelId}`).emit('sendMessage', message);
   }
 
   @SubscribeMessage('getChannelMessages')
   async getChannelMessages(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
-    const messages = await this.channelService.getChannelMessages(payload.channelId);
+    const channel = await this.channelService.getChannelById(payload.channelId);
+    const messages = await this.channelService.getChannelMessages(channel);
     await client.emit('getChannelMessages', messages);
   }
 }

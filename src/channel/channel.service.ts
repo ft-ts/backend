@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Body } from '@nestjs/common';
 import { Not, Repository } from 'typeorm';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import * as bcrypt from 'bcrypt';
@@ -12,6 +12,7 @@ from 'src/common/exceptions/chat.exception';
 import { Cm } from './entities/cm.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { ChannelUser } from './entities/channelUser.entity';
+import { ChannelPasswordDto } from './dto/channel-password.dto';
 
 @Injectable()
 export class ChannelService {
@@ -45,17 +46,14 @@ export class ChannelService {
       throw new NotFoundException('Channel not found.');
     }
 
-    const isMember = await this.isUserMember(user, channel);
+    const isMember = await this.channelUserRepository.findOne({
+      where: { user: { id: user.id }, channel: { id: channel.id } },
+    });
     if (!isMember) {
       throw new NotAuthorizedException('User is not a member of the channel.');
     }
 
     return channel;
-  }
-
-  async isUserMember(user: User, channel: Channel): Promise<boolean> {
-    const channelUser = await this.getChannelUser(user.id, channel.id);
-    return !!channelUser;
   }
 
   async getChannelById(channelId: number): Promise<Channel | undefined> {
@@ -150,7 +148,7 @@ export class ChannelService {
   async enterChannel(
     user: User,
     channelId: number,
-    password: string,
+    password?: string,
   ): Promise<Channel> {
     const channel = await this.channelRepository.findOne({
       where: { id: channelId },
@@ -169,17 +167,18 @@ export class ChannelService {
     if (isFull) {
       throw new NotAuthorizedException('Channel is full');
     }
-    else if (channel.mode === ChannelMode.PROTECTED) {
-      if (channel.password !== password) {
-        throw new InvalidPasswordException();
-      }
-    }
     else if (channel.mode === ChannelMode.PRIVATE) {
       throw new NotAuthorizedException('Channel is private');
-    } else if (!existingUser) {
+    } else if (!!!existingUser) {
       await this.joinChannel(user, channel);
     }
     return channel;
+  }
+
+  async verifyPassword(body: ChannelPasswordDto) {
+    const { channelId, password } = body;
+    const channel = await this.getChannelById(channelId);
+    return await bcrypt.compare(password, channel.password);
   }
 
   async joinChannel(user: User, channel: Channel): Promise<ChannelUser> {
@@ -395,10 +394,9 @@ export class ChannelService {
     await this.channelUserRepository.delete(targetChannelUser.id);
   }
 
-  async inviteUserToChannel(user: User, channelId: number, targetUser: User): Promise<void> {
-    const isFull = await this.getMemberCnt(await this.getChannelById(channelId)) > 4;
-    const targetChannelUser = await this.getChannelUser(targetUser.id, channelId);
-    const channel = await this.getChannelById(channelId);
+  async inviteUserToChannel(user: User, channel: Channel, targetUser: User): Promise<void> {
+    const isFull = await this.getMemberCnt(await this.getChannelById(channel.id)) > 4;
+    const targetChannelUser = await this.getChannelUser(targetUser.id, channel.id);
     if (channel.mode === ChannelMode.PRIVATE) {
       throw new NotAuthorizedException('Channel is private');
     }
@@ -406,7 +404,7 @@ export class ChannelService {
       throw new NotAuthorizedException('Channel is full');
     }
     else if (!targetChannelUser) {
-      await this.joinChannel(targetUser, await this.getChannelById(channelId));
+      await this.joinChannel(targetUser, await this.getChannelById(channel.id));
     }
     else if (await this.isBannedUser(targetUser, channel)) {
       throw new NotAuthorizedException('User is banned from the channel');
@@ -434,7 +432,9 @@ export class ChannelService {
       channel: channel,
       sender_uid: user.uid,
       content: createMessageDto.content,
-      timeStamp: new Date(),
+      timeStamp: new Date().toISOString().
+      replace(/T/, ' ').      // replace T with a space
+      replace(/\..+/, '')    // delete the dot and everything after,
     });
     await this.cmRepository.save(message)
     return message;
@@ -443,7 +443,6 @@ export class ChannelService {
   async getChannelMessages(channel: Channel): Promise<Cm[]> {
     const messages = await this.cmRepository.find({
       where: { channel: { id: channel.id} },
-      order: { timeStamp: 'DESC' },
     });
     return messages;
   }
