@@ -13,7 +13,7 @@ export class RtGuard implements CanActivate {
     const token =
       context.getType() === 'http'
         ? context.switchToHttp().getRequest().headers.authorization.split('Bearer ')[1]
-        : context.switchToWs().getClient().handshake.headers.authorization;
+        : context.switchToWs().getClient().handshake.auth.token;
   
     const user = await this.authService.validateRefreshToken(token);
     

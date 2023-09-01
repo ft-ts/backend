@@ -13,8 +13,8 @@ export class AtGuard implements CanActivate {
     const token =
       context.getType() === 'http'
         ? context.switchToHttp().getRequest().headers?.authorization?.split('Bearer ')[1]
-        : context.switchToWs().getClient().handshake?.headers?.authorization;
-      
+        : context.switchToWs().getClient().handshake?.auth.token;
+
     if (!token) {
       Logger.debug('[AtGuard] No token');
       throw new UnauthorizedException('No token');
