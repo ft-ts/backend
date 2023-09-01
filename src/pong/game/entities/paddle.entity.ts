@@ -1,10 +1,6 @@
 import { Entity } from './object.entitiy'
-import { 
-  paddleConstants,
-  entityType,
-  gameConstants,
-  keyInput
-} from '../game.constant'
+import { paddleConstants, gameConstants } from '../game.constant'
+import { keyInput, entityType } from '../../pong.enum'
 
 export class Paddle extends Entity {
   private playerID: string;
@@ -22,17 +18,18 @@ export class Paddle extends Entity {
   }
 
   update(key: string) {
-    const isUp : boolean = key === keyInput.UP ? true : false;
-    const isDown : boolean = key === keyInput.DOWN ? true : false;
-    if (isUp && this.y + this.height > 0) {
-      this.dy = -1;
-    } else if (isDown && this.y < gameConstants.canvasHeight - this.height) {
-      this.dy = 1;
-    } else {
-      this.dy = 0;
-    }
+    let desiredDy = 0;
+  
+    if (key === keyInput.UP && this.y > 5)
+      desiredDy = -0.5;
+    else if (key === keyInput.DOWN && this.y + this.height < gameConstants.canvasHeight - 5)
+      desiredDy = 0.5;
+    this.dy = desiredDy;
     this.y += this.dy * this.speed;
   }
+  
+
+  getPlayerType(): string{ return (this.entityType); }
 
   getPlayerID(): string{ return (this.playerID); }
 
@@ -43,6 +40,7 @@ export class Paddle extends Entity {
   toDto() {
     return {
       ...super.toDto(),
+      score: this.score,
     }
   }
 }

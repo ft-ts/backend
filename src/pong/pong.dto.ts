@@ -1,10 +1,11 @@
 import { Socket } from 'socket.io';
-import { Ball } from '../game/entities/ball.entity';
-import { Paddle } from '../game/entities/paddle.entity';
-import { MatchType } from '../enum/matchType.enum';
+import { Ball } from './game/entities/ball.entity';
+import { Paddle } from './game/entities/paddle.entity';
+import { MatchType } from './pong.enum';
 
-export interface MatchInfoDto {
+export interface MatchInfo {
   matchType: MatchType;
+  matchID: string;
   user1: Socket;
   user2: Socket;
   user1_score: number;
@@ -15,6 +16,7 @@ export interface MatchInfoDto {
   loser_id: number;
   start_date: Date;
   interval: NodeJS.Timeout;
+  gameInfo: GameInfo;
 }
 
 export interface GameInfo {

@@ -1,7 +1,7 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { MatchInfo } from "./entities/matchInfo.entity";
-import { UpdateMatchInfoDto } from "./dto/pong.dto";
+import { MatchInfo } from "./pong.entity";
+import { UpdateMatchInfoDto } from "./pong.dto";
 import { Injectable } from "@nestjs/common";
 import { User } from "src/user/entities/user.entity";
 

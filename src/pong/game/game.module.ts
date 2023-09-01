@@ -3,7 +3,7 @@ import { GameService } from './game.service';
 import { PongRepository } from '../pong.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
-import { MatchInfo } from '../entities/matchInfo.entity';
+import { MatchInfo } from '../pong.entity';
 
 @Module({
   imports: [
