@@ -9,7 +9,7 @@ async function bootstrap() {
     origin: '*',
   });
 
-  const port = process.env.SERVER_PORT || 10000;
+  const port = process.env.SERVER_PORT;
   await app.listen(port);
 
   Logger.debug(`App running on port ${port}`);

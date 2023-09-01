@@ -9,6 +9,7 @@ import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
 import { AuthModule } from './auth/auth.module';
 import { DmModule } from './dm/dm.module';
 import { ChannelModule } from './channel/channel.module';
+import { AppGateway } from './app.gateway';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ChannelModule } from './channel/channel.module';
     DmModule,
   ],
   providers: [
+    AppGateway,
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
