@@ -16,6 +16,6 @@ export class Cm extends BaseEntity {
   @Column('text', { nullable: false })
   content: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamp' })
   timeStamp: Date;
 }
