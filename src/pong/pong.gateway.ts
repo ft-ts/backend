@@ -11,7 +11,7 @@ import {
 import { Socket, Server } from 'socket.io';
 import { PongService } from './pong.service';
 import { GameService } from './game/game.service';
-import { MatchType } from './enum/matchType.enum';
+import { MatchType } from './pong.enum';
 import { AuthService } from 'src/auth/auth.service';
 
 @WebSocketGateway({
@@ -46,9 +46,22 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   handleConnection(client: Socket) {
     if (!this.authService.validateSocket(client))
     {
+      console.log('pong handleConnection', 'invalid socket');
       client.disconnect();
       return ;
     }
+    if (client.data.uid === undefined)
+    {
+      console.log('pong handleConnection', 'undefined uid');
+      client.disconnect();
+      return ;
+    }
+    // if (this.uidSocketMap.has(client.data.uid))
+    // {
+    //   console.log('pong handleConnection', 'already connected');
+    //   client.disconnect();
+    //   return ;
+    // }
     console.log('pong handleConnection', client.data.uid);
     client.join(`pong_${client.data.uid}`);
     this.uidSocketMap.set(client.data.uid, client);
@@ -113,7 +126,7 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
    if (this.rooms.has(`pong_${payload.uid}`) &&
        this.rooms.get(`pong_${payload.uid}`).size === 1){
       client.join(`pong_${payload.uid}`);
-      this.pongService.createGame(client, opponent, MatchType.CUSTOM);
+      this.pongService.matchFriend(client, opponent);
     }
     else {
       console.log('pong/accept', 'error');
@@ -127,19 +140,25 @@ implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     @MessageBody() payload: any,
   ){
     console.log('pong/reject', payload);
-   /*
-    ** @payload : { uid: string }
-    */
-   this.uidSocketMap.get(payload.uid).emit('pong/match/reject', client.data.uid);
+    this.uidSocketMap.get(payload.uid).emit('pong/match/reject', client.data.uid);
   }
 
   @SubscribeMessage('pong/game/keyEvent')
   async keyEvent(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any,
+    @MessageBody() payload: { key: string, matchID : string },
   ){
     console.log('pong/keyEvent', payload);
     this.gameService.keyEvent(client, payload);
   }
 
+
+  @SubscribeMessage('pong/game/ready')
+  async ready(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchID: string},
+  ){
+    console.log('pong/ready', payload);
+    this.gameService.readyGame(payload);
+  }
 }

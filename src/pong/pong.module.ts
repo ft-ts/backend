@@ -7,7 +7,7 @@ import { GameModule } from './game/game.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { PongRepository } from './pong.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { MatchInfo } from './entities/matchInfo.entity';
+import { MatchInfo } from './pong.entity';
 import { User } from 'src/user/entities/user.entity';
 
 @Module({
