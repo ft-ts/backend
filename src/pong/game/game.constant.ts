@@ -1,42 +1,30 @@
 export const gameConstants = {
-  canvasWidth: 1280,
-  canvasHeight: 720,
-  gameInterval: 30,
-  maxScore: 1,
+  canvasWidth: 1024,
+  canvasHeight: 500,
+  gameInterval: 1000/30,
+  maxScore: 2,
 };
   
 export const ballConstatns = {
-ballWidth: 40,
-ballHeight: 40,
-ballSpeed: 5,
+ballWidth: 20,
+ballHeight: 20,
+ballSpeed: 10,
 startPosition: {
-  x: gameConstants.canvasWidth / 2,
-  y: gameConstants.canvasHeight / 2,
+  x: (gameConstants.canvasWidth - 40) / 2,
+  y: (gameConstants.canvasHeight - 40) / 2,
 },
 };
 
 export const paddleConstants = {
 paddleWidth: 20,
-paddleHeight: 300,
+paddleHeight: 185,
 paddleSpeed: 20,
 homePlayerStartPos: {
   x: 20,
-  y: (gameConstants.canvasHeight - 300) / 2,
+  y: (gameConstants.canvasHeight - 200) / 2,
 },
 awayPlayerStartPos: {
-  x: gameConstants.canvasWidth - 20,
-  y: (gameConstants.canvasHeight - 300) / 2,
+  x: gameConstants.canvasWidth - 40,
+  y: (gameConstants.canvasHeight - 200) / 2,
 },
-};
-
-export const entityType = {
-BALL: 'ball',
-HOMEPLAYER: 'homePlayer',
-AWAYPLAYER: 'awayPlayer',
-};
-
-export const keyInput = {
-UP: 'up',
-DOWN: 'down',
-NONE: 'none'
 };

@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { MatchType } from '../enum/matchType.enum';
+import { MatchType } from './pong.enum';
 
 @Entity()
 export class MatchInfo {
