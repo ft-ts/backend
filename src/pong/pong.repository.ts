@@ -18,14 +18,11 @@ export class PongRepository{
     matchInfo: UpdateMatchInfoDto,
   ) {
     const newMatchInfo = this.matchInfoRepository.create({
-      match_id: matchInfo.match_id,
-      user1_id: matchInfo.user1_id,
-      user2_id: matchInfo.user2_id,
-      match_type: matchInfo.match_type,
-      user1_score: matchInfo.user1_score,
-      user2_score: matchInfo.user2_score,
       winner_id: matchInfo.winner_id,
       loser_id: matchInfo.loser_id,
+      winner_score: matchInfo.winner_score,
+      loser_score: matchInfo.loser_score,
+      match_type: matchInfo.match_type,
       timestamp: matchInfo.timestamp,
     });
     try {
@@ -36,12 +33,12 @@ export class PongRepository{
   }
 
   async updateUsersElo(
-    uid: number,
+    user_id: string,
     elo: number,
   ){
     const user = await this.userRepository.findOne({
       where: {
-        uid: uid,
+        name: user_id,
       }
     });
     user.rating = elo;
@@ -54,15 +51,66 @@ export class PongRepository{
   }
 
   async getUserMatchHistory(
-    uid: number,
+    user_id: string,
   ){
+    console.log(user_id);
+
+    // const result = await this.matchInfoRepository
+    // .createQueryBuilder('matchInfo')
+    // .select(['matchInfo.id', 'matchInfo.match_id', 'matchInfo.match_type', 'matchInfo.user1_score', 'matchInfo.user2_score', 'matchInfo.winner_id', 'matchInfo.loser_id', 'matchInfo.timestamp'])
+    // .where('user1_id = :uid', { uid : uid })
+    // .orWhere('user2_id = :uid', { uid : uid })
+    // .orderBy('matchInfo.timestamp', 'DESC')
+    // .getRawMany();
+
     const result = await this.matchInfoRepository
     .createQueryBuilder('matchInfo')
-    .select(['matchInfo.id', 'matchInfo.match_id', 'matchInfo.match_type', 'matchInfo.user1_score', 'matchInfo.user2_score', 'matchInfo.winner_id', 'matchInfo.loser_id', 'matchInfo.timestamp'])
-    .where('user1_id = :uid', { uid : uid })
-    .orWhere('user2_id = :uid', { uid : uid })
+    .select(['matchInfo.id', 'matchInfo.match_type', 'matchInfo.winner_score', 'matchInfo.loser_score', 'matchInfo.winner_id', 'matchInfo.loser_id', 'matchInfo.timestamp'])
+    .where('winner_id = :user_id', { user_id : user_id })
+    .orWhere('loser_id = :user_id', { user_id : user_id })
     .orderBy('matchInfo.timestamp', 'DESC')
-    .getMany();
+    .getRawMany();
     return result;
+  }
+
+  private async getUserUIDByName(
+    name: string,
+  ){
+    const uid: number = await this.userRepository
+    .createQueryBuilder('users')
+    .select('users.uid')
+    .where('users.name = :name', { name : name })
+    .getOne()
+    .then((user) => {
+      if (user === undefined || user === null) return null;
+      return user.uid;
+    })
+    .catch((err) => {
+      console.log(err);
+      return null;
+    });
+    console.log(uid);
+    
+    return uid;
+  }
+
+  async getUserNameByUID(
+    uid: number,
+  ){
+    const name: string = await this.userRepository
+    .createQueryBuilder('users')
+    .select('users.name')
+    .where('users.uid = :uid', { uid : uid })
+    .getOne()
+    .then((user) => {
+      if (user === undefined || user === null) return null;
+      return user.name;
+    })
+    .catch((err) => {
+      console.log(err);
+      return null;
+    });
+    console.log(name);
+    return (name);
   }
 }

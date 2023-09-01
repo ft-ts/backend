@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Res } from '@nestjs/common';
 import { PongRepository } from './pong.repository';
 import { GetUser } from 'src/common/decorators';
 import { AtGuard } from 'src/auth/auth.guard';
@@ -10,13 +10,24 @@ export class PongController {
     private readonly pongRepository: PongRepository,
     ) {} 
 
-    @Get('all')
+    @Get()
     getAllMatchHistory() {
+      console.log('get all match history');
+      
       return this.pongRepository.getAllMatchHistory();
     }
 
     @Get(':id')
-    getUserMatchHistory(@GetUser() user: any) {
-      return this.pongRepository.getUserMatchHistory(user.uid);
+    async getUserMatchHistory(
+      @Res() res,
+      @GetUser() user: any,
+      @Param('id') id: string,
+    ) {
+      console.log('get user match history', user.uid, id);
+      const data = {
+        history : await this.pongRepository.getUserMatchHistory(id)
+      };
+      res.status(200).json(data);
+      // return this.pongRepository.getUserMatchHistory(id);
     }
 }
