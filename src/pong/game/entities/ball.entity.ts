@@ -1,13 +1,14 @@
 import { Entity } from './object.entitiy';
 import { Paddle } from './paddle.entity';
-import { ballConstatns, entityType, gameConstants } from '../game.constant';
+import { ballConstatns, gameConstants } from '../game.constant';
+import { entityType } from '../../pong.enum';
 
 export class Ball extends Entity {
   private player1: Paddle;
   private player2: Paddle;
   constructor(homePlayer: Paddle, awayPlayer: Paddle) {
     super(entityType.BALL);
-    const randomDirection = Math.random() * 2 - 1;
+    const randomDirection = Math.random() < 0.5 ? -1 : 1;
 
     this.width = ballConstatns.ballWidth;
     this.height = ballConstatns.ballHeight;
@@ -35,7 +36,7 @@ export class Ball extends Entity {
 
   ballCollideWithPaddle(paddle: Paddle) : boolean{
     if (this.x < paddle.x + paddle.width &&
-      this.x + this.width > paddle.x &&
+      this.x + this.width > paddle.x && 
       this.y < paddle.y + paddle.height &&
       this.y + this.height > paddle.y) {
       return (true);
@@ -44,7 +45,7 @@ export class Ball extends Entity {
   }
 
   ballCollideWithWall() : boolean{
-    if (this.y + this.height > gameConstants.canvasHeight || this.y - this.height < 0) {
+    if (this.y + this.height >= gameConstants.canvasHeight || this.y <= 0) {
       return (true);
     }
     return (false);

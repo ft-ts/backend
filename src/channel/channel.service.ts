@@ -415,7 +415,6 @@ export class ChannelService {
     }
   }
 
-
   /* ==== */
   /* Chat */
   /* ==== */

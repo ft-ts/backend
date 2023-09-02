@@ -1,5 +1,4 @@
 import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { Observable } from 'rxjs';
 import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
@@ -13,7 +12,7 @@ export class RtGuard implements CanActivate {
     const token =
       context.getType() === 'http'
         ? context.switchToHttp().getRequest().headers.authorization.split('Bearer ')[1]
-        : context.switchToWs().getClient().handshake.headers.authorization;
+        : context.switchToWs().getClient().handshake.auth.token;
   
     const user = await this.authService.validateRefreshToken(token);
     

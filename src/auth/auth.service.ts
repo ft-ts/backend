@@ -39,7 +39,7 @@ export class AuthService {
   }
 
   async validateSocket(client: Socket): Promise<boolean> {
-    const token = client.handshake.headers.authorization;
+    const token = client.handshake.auth.token;
     if (token === undefined || token === null) {
       Logger.error(`[AuthService validateSocket] invalid user`);
       return false;

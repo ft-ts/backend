@@ -21,9 +21,10 @@ export class LoginController {
   @UseGuards(AuthGuard('42'))
   async redirect(@GetUser() user: User, @Res() res: Response) {
     const { accessToken, refreshToken } = await this.loginService.validateUser(user);
-    res.setHeader('access_token', `Bearer ${accessToken}`);
-    res.setHeader('refresh_token', `Bearer ${refreshToken}`);
-    res.json({ accessToken, refreshToken });
+    res.cookie('accessToken', accessToken);
+    res.cookie('refreshToken', refreshToken);
+    res.header('Cache-Control', 'no-store');
+    res.status(200).redirect(`http://localhost:3000/main`);
   }
 
   @Get('/logout')
@@ -38,9 +39,13 @@ export class LoginController {
     const { accessToken, refreshToken } = await this.loginService.refreshTokens(
       user,
     );
-    res.setHeader('access_token', `Bearer ${accessToken}`);
-    res.setHeader('refresh_token', `Bearer ${refreshToken}`);
-    res.json({ accessToken, refreshToken });
+    res.cookie('accessToken', accessToken);
+    res.cookie('refreshToken', refreshToken);
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    res.header('Cache-Control', 'no-store');
+   
+    res.status(200).redirect(`http://localhost:3000/main`);
   }
 
   @Get('/2fa')
