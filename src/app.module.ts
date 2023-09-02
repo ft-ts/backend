@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { DmModule } from './dm/dm.module';
 import { ChannelModule } from './channel/channel.module';
 import { AppGateway } from './app.gateway';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -28,5 +29,6 @@ import { AppGateway } from './app.gateway';
       useClass: LoggingInterceptor,
     },
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
