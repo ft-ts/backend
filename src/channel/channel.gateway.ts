@@ -7,10 +7,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { InvalidPasswordException, NotAuthorizedException, NotFoundException } from 'src/common/exceptions/chat.exception';
 import { UseGuards } from '@nestjs/common';
 import { AtGuard } from 'src/auth/auth.guard';
-
-interface UserSocketMap {
-  [userUid: number]: Socket;
-}
+import { SocketService } from 'src/common/service/socket.service';
 
 @UseGuards(AtGuard)
 @WebSocketGateway({
@@ -22,41 +19,27 @@ interface UserSocketMap {
 export class ChannelGateway {
   constructor(
     private readonly channelService: ChannelService,
+    private readonly socketService: SocketService,
   ) { }
 
   @WebSocketServer()
   server: Server;
 
-  private userSocketMap: UserSocketMap = {};
-
-  // async handleConnection(@ConnectedSocket() client: Socket) {
-  //   if (!(await this.authService.validateSocket(client))) {
-  //     client.disconnect();
-  //     console.log('handleConnection Invalid', client.data.uid);
-  //     return;
-  //   }
-  //   const user = await this.channelService.getAuthenticatedUser(client.data.uid);
-  //   const userChannels = await this.channelService.getMyChannels(user);
-  //   this.userSocketMap[client.data.uid] = client;
-  //   for (const channel of userChannels) {
-  //     await client.join(`channel/channel/channel-${channel.id}`);
-  //   }
-  //   console.log('handleConnection Channel', user.name, client.data.uid);
-  //   client.emit('channel/channel/handleConnection', user);
-  // }
+  @SubscribeMessage('channel/linkChannel')
+  async linkChannel(@ConnectedSocket() client: Socket) {
+    const user = await this.channelService.getAuthenticatedUser(client.data.uid);
+    const userChannels = await this.channelService.getMyChannels(user);
+    for (const channel of userChannels) {
+      await client.join(`channel/channel-${channel.id}`);
+    }
+  }
 
   // async handleDisconnect(@ConnectedSocket() client: Socket) {
-  //     if (!(await this.authService.validateSocket(client))) {
-  //       client.disconnect();
-  //       return;
-  //     }
   //     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
   //     const userChannels = await this.channelService.getMyChannels(user);
   //     for (const channel of userChannels) {
-  //       await client.leave(`channel-${channel.id}`);
+  //       await client.leave(`channel/channel-${channel.id}`);
   //     }
-  //   console.log('handleDisconnect', user.name, client.data.uid);
-  //   delete this.userSocketMap[client.data.uid];
   // }
 
   /* ======= */
@@ -113,6 +96,10 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channels = await this.channelService.getMyChannels(user);
     await client.emit('channel/getMyChannels', channels);
+    const userChannels = await this.channelService.getMyChannels(user);
+    for (const channel of userChannels) {
+      await client.join(`channel/channel-${channel.id}`);
+    }
   }
 
 
@@ -186,7 +173,7 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
     await this.channelService.banMember(user, payload.channelId , targetUser);
-    const targetUserSocket = this.userSocketMap[payload.targetUserUid];
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUserUid);
     if (!!targetUserSocket) {
       await targetUserSocket.emit('channel/updateMemberState', `You've been banned from the channel ${payload.channelId}`);
       await targetUserSocket.leave(`channel/channel-${payload.channelId}`);
@@ -205,7 +192,7 @@ export class ChannelGateway {
   @SubscribeMessage('channel/kickMember')
   async kickMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
-    const targetUserSocket = this.userSocketMap[payload.targetUserUid];
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUserUid);
     if (!!targetUserSocket) {
       await targetUserSocket.emit('channel/updateMemberState', `You've been kicked from the channel ${payload.channelId}`);
       await targetUserSocket.leave(`channel/channel-${payload.channelId}`);
@@ -221,7 +208,7 @@ export class ChannelGateway {
     const targetUser = await this.channelService.getUserByUid(payload.targetUid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.inviteUserToChannel(user, channel , targetUser);
-    const targetUserSocket = await this.userSocketMap[targetUser.uid];
+    const targetUserSocket = await this.socketService.getSocket(targetUser.uid);
     if (!!targetUserSocket) {
       console.log('inviteUserToChannel', targetUserSocket.data.uid);
       await targetUserSocket.join(`channel/channel-${payload.channelId}`);
@@ -244,6 +231,6 @@ export class ChannelGateway {
   async getChannelMessages(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const channel = await this.channelService.getChannelById(payload.channelId);
     const messages = await this.channelService.getChannelMessages(channel);
-    await client.emit('channel/channel/getChannelMessages', messages);
+    await client.emit('channel/getChannelMessages', messages);
   }
 }

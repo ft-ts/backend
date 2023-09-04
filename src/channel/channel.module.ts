@@ -9,6 +9,7 @@ import { ChannelService } from './channel.service';
 import { ChannelUser } from './entities/channelUser.entity';
 import { ChannelController } from './channel.controller';
 import { AtGuard } from 'src/auth/auth.guard';
+import { SocketModule } from 'src/common/module/socket.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AtGuard } from 'src/auth/auth.guard';
       User,
     ]),
     AuthModule,
+    SocketModule
   ],
   providers: [ChannelGateway, ChannelService, AtGuard],
   controllers: [ChannelController]
