@@ -11,6 +11,7 @@ import { DmModule } from './dm/dm.module';
 import { ChannelModule } from './channel/channel.module';
 import { AppGateway } from './app.gateway';
 import { AppController } from './app.controller';
+import { SocketService } from './common/service/socket.service';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AppController } from './app.controller';
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
     },
+    SocketService,
   ],
   controllers: [AppController],
 })
