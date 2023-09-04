@@ -12,16 +12,12 @@ export class SocketService{
 
   async addSocket(uid: number, socket: Socket){
     Logger.debug(`[SocketService] addSocket ${uid}`);
-    console.log(socket.data);
-    
     this._socketMap.set(uid, socket);
 
   }
 
   async getSocket(uid: number) : Promise<Socket | null>{
     Logger.debug(`[SocketService] getSocket ${uid}`);
-    console.log('getter',this._socketMap.get(uid)?.data, this._socketMap.has(uid));
-    
     if (!this._socketMap.has(uid)){
       Logger.debug(`[SocketService] null`);
       return null;
