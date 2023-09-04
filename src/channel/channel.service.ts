@@ -204,6 +204,7 @@ export class ChannelService {
     channel.memberCnt = await this.getMemberCnt(channel);
     await this.channelRepository.save(channel);
     if (await this.getMemberCnt(channel) === 0) {
+      await this.cmRepository.delete({ channel: { id: channel.id } });
       await this.channelRepository.remove(channel);
     }
   }
