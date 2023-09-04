@@ -9,7 +9,7 @@ import { PongRepository } from './pong.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MatchInfo } from './pong.entity';
 import { User } from 'src/user/entities/user.entity';
-import { SocketService } from 'src/common/service/socket.service';
+import { SocketModule } from 'src/common/module/socket.module';
 
 @Module({
   imports: [
@@ -20,8 +20,9 @@ import { SocketService } from 'src/common/service/socket.service';
     DmModule,
     GameModule,
     AuthModule,
+    SocketModule,
   ],
   controllers: [PongController],
-  providers: [PongGateway, PongService, PongRepository, SocketService],
+  providers: [PongGateway, PongService, PongRepository],
 })
 export class PongModule {}
