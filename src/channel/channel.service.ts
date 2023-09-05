@@ -278,6 +278,7 @@ export class ChannelService {
   async getChannelMembers(channelId: number): Promise<ChannelUser[]> {
     const channelUsers = await this.channelUserRepository.find({
       where: { channel: { id: channelId } },
+      relations: ['user'],
     });
     if (!channelUsers) {
       throw new NotFoundException('No users found for the channel');

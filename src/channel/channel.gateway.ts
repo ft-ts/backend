@@ -53,7 +53,7 @@ export class ChannelGateway {
     const channel = await this.channelService.createChannel(user, createGroupChannelDto);
     await this.server.emit('channel/channelUpdate', channel);
     await client.join(`channel/channel-${channel.id}`);
-    await this.server.to(`channel/channel-${channel.id}`).emit('channel/createChannel', channel);
+    await this.server.to(`channel/channel-${channel.id}`).emit('channel/createChannel', channel.id);
   }
 
   @SubscribeMessage('channel/enterChannel')
