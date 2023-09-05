@@ -1,59 +1,69 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { Socket } from "socket.io";
-import { MatchInfo, GameInfo, UpdateMatchInfoDto } from "../pong.dto";
+import { MatchInfo, GameInfo, UpdateMatchInfoDto, ReadyStatus } from "../pong.dto";
 import { Ball } from "../game/entities/ball.entity";
 import { Paddle } from "../game/entities/paddle.entity";
 import { gameConstants} from "./game.constant";
 import { PongRepository } from "../pong.repository";
 import { MatchType } from "../pong.enum"
+import { UserStatus } from "src/user/enums/userStatus.enum";
+
 
 @Injectable()
 export class GameService{
 
   private _matchInfo : Map<string, MatchInfo>;
-
+  private _readyStatus : Map<string, ReadyStatus>;
   constructor(
     private readonly pongRepository: PongRepository,
   ){
-    console.log('GameService constructor');
+    Logger.debug(`[🏓GameService] constructor`);
     this._matchInfo = new Map<string, MatchInfo>();
+    this._readyStatus = new Map<string, ReadyStatus>();
   }
   async createGame(
     client1 : Socket,
     client2 : Socket,
     matchType : MatchType,
   ){
-    console.log('createGame');
     const matchInfo : MatchInfo = await this._setMatchInfo(client1, client2, matchType);
     this._matchInfo.set(matchInfo.matchID, matchInfo);
+    this._readyStatus.set(matchInfo.matchID, {
+      user1: false,
+      user2: false,
+    });
+    Logger.log(`[🏓GameService] createGame ${matchInfo.matchID} ${matchInfo.user1.data.uid} ${matchInfo.user2.data.uid}`);
     await client1.emit('pong/game/init', { matchID : matchInfo.matchID});
     await client2.emit('pong/game/init', { matchID : matchInfo.matchID});
   }
 
   async readyGame(
+    client : Socket,
     payload : { matchID: string }
   ){
-    console.log('readyGame');
-    const client1 : Socket = this._matchInfo.get(payload.matchID).user1;
-    const client2 : Socket = this._matchInfo.get(payload.matchID).user2;
+    Logger.log(`[🏓GameService] readyGame ${payload.matchID}`);
+    const matchInfo = this._matchInfo.get(payload.matchID);
+    const readyStatus = this._readyStatus.get(payload.matchID);
     const gameInfo : GameInfo = this._matchInfo.get(payload.matchID).gameInfo;
-
-    await client1.emit('pong/game/ready', {
-      player1: gameInfo.player1.toDto(),
-      player2: gameInfo.player2.toDto(),
-      ball: gameInfo.ball.toDto(),
-    });
-    await client2.emit('pong/game/ready', {
-      player1: gameInfo.player2.toDto(),
-      player2: gameInfo.player1.toDto(),
-      ball: gameInfo.ball.toDto(),
-    });
+    
+    this.pongRepository.setUserStatus(client.data.uid, UserStatus.IN_GAME);
+    if (client.id === matchInfo.user1.id){
+      client.emit('pong/game/ready', {player1 : gameInfo.player1.toDto(), player2 : gameInfo.player2.toDto(), ball : gameInfo.ball.toDto()});
+      readyStatus.user1 = true;
+    } else if (client.id === matchInfo.user2.id){
+      client.emit('pong/game/ready', {player1 : gameInfo.player2.toDto(), player2 : gameInfo.player1.toDto(), ball : gameInfo.ball.toDto()});
+      readyStatus.user2 = true;
+    }
+    if (readyStatus.user1 && readyStatus.user2){
+      this.startGame(payload.matchID);
+    }
   }
 
   async startGame(
     matchID: string,
   ){
     const matchInfo: MatchInfo = this._matchInfo.get(matchID);
+    Logger.log(`[🏓GameService] startGame ${matchInfo.matchID}`);
     this._gameLoop = this._gameLoop.bind(this);
     matchInfo.interval = setInterval(() => {
       this._gameLoop(matchInfo);
@@ -65,10 +75,10 @@ export class GameService{
       client : Socket,
       payload : { key: string, matchID : string},
   ){
-      console.log('keyEvent');
-      const gameInfo : GameInfo = this._matchInfo.get(payload.matchID).gameInfo;
-      const player : Paddle = client.id === gameInfo.player1.getPlayerID() ? gameInfo.player1 : gameInfo.player2;
-      player.update(payload.key);
+    Logger.log(`[PongGateway keyEvent] ${client.data.uid} ${payload.key}`);
+    const gameInfo : GameInfo = this._matchInfo.get(payload.matchID).gameInfo;
+    const player : Paddle = client.id === gameInfo.player1.getPlayerID() ? gameInfo.player1 : gameInfo.player2;
+    player.update(payload.key);
   }
     
   private async _setMatchInfo(
@@ -78,7 +88,6 @@ export class GameService{
   ) : Promise<MatchInfo>{
     const gameInfo : GameInfo = await this._setGameInfo(client1, client2);
     const matchID : string = Math.random().toString(36).slice(2);
-    console.log('matchID', matchID);
     const matchInfo : MatchInfo = {
       matchType: matchType,
       matchID: matchID,
@@ -121,7 +130,6 @@ export class GameService{
     gameInfo.ball.update();
     if (gameInfo.player1.getScore() >= gameConstants.maxScore || 
     gameInfo.player2.getScore() >= gameConstants.maxScore){
-      // console.log('endGame', gameInfo.player1.getScore(), gameInfo.player2.getScore());
       clearInterval(matchInfo.interval);
       await this.endGame(matchInfo);
     } else {
@@ -137,11 +145,12 @@ export class GameService{
       });
     }
   }
+
   private async endGame(
     matchInfo: MatchInfo,
   ){
-    console.log('endGame');
     const gameInfo = matchInfo.gameInfo;
+
     matchInfo.user1_score = gameInfo.player1.getScore();
     matchInfo.user2_score = gameInfo.player2.getScore();
     matchInfo.winner_id = gameInfo.player1.getScore() > gameInfo.player2.getScore() ? matchInfo.user1.data.uid : matchInfo.user2.data.uid;
@@ -170,19 +179,21 @@ export class GameService{
       winner_elo,
       false,
     );
+    this.pongRepository.setUserStatus(matchInfo.user1.data.uid, UserStatus.ONLINE);
+    this.pongRepository.setUserStatus(matchInfo.user2.data.uid, UserStatus.ONLINE);
     const updatedDto : UpdateMatchInfoDto = await this.createUpdaeMatchInfo(matchInfo);
+    this._readyStatus.delete(matchInfo.matchID);
     this._matchInfo.delete(matchInfo.matchID);
     await this.saveGameResult(updatedDto, winner_new_elo, loser_new_elo);
+    Logger.log(`[🏓GameService] endGame ${matchInfo.matchID}`);
   }
 
   private async createUpdaeMatchInfo(
     matchInfo: MatchInfo,
   ): Promise<UpdateMatchInfoDto>{
-    console.log('createupdateMatchInfo');
 
     const winner_id = await this.pongRepository.getUserNameByUID(matchInfo.winner_id);
     const loser_id = await this.pongRepository.getUserNameByUID(matchInfo.loser_id);
-    console.log(winner_id, loser_id)
     const updateDto: UpdateMatchInfoDto = {
       winner_id: winner_id,
       winner_score: matchInfo.user1_score > matchInfo.user2_score ? matchInfo.user1_score : matchInfo.user2_score,
@@ -199,7 +210,6 @@ export class GameService{
     otherPoint: number,
     isWin: boolean,
   ): Promise<number>{
-    console.log('calculateEloPoint');
     const K: number = 10;
     const W: number = isWin ? 1 : -1;
     const We: number = 1 / (1 + Math.pow(10, (otherPoint - myPoint) / 400));
@@ -212,7 +222,6 @@ export class GameService{
     winner_elo: number,
     loser_elo: number,
   ){
-    console.log('saveGameResult');
     await this.pongRepository.saveMatchInfo(matchInfo);
     await this.pongRepository.updateUsersElo(matchInfo.winner_id, winner_elo);
     await this.pongRepository.updateUsersElo(matchInfo.loser_id, loser_elo);

@@ -33,3 +33,8 @@ export interface UpdateMatchInfoDto {
   match_type: MatchType;
   timestamp: Date;
 }
+
+export interface ReadyStatus {
+  user1: boolean;
+  user2: boolean;
+}

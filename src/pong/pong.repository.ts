@@ -2,8 +2,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { MatchInfo } from "./pong.entity";
 import { UpdateMatchInfoDto } from "./pong.dto";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { User } from "src/user/entities/user.entity";
+import { UserStatus } from "src/user/enums/userStatus.enum";
 
 @Injectable()
 export class PongRepository{
@@ -28,7 +29,7 @@ export class PongRepository{
     try {
       await this.matchInfoRepository.save(newMatchInfo);
     } catch (err) {
-      console.log(err);
+      Logger.error(err);
     }
   }
 
@@ -53,16 +54,6 @@ export class PongRepository{
   async getUserMatchHistory(
     user_id: string,
   ){
-    console.log(user_id);
-
-    // const result = await this.matchInfoRepository
-    // .createQueryBuilder('matchInfo')
-    // .select(['matchInfo.id', 'matchInfo.match_id', 'matchInfo.match_type', 'matchInfo.user1_score', 'matchInfo.user2_score', 'matchInfo.winner_id', 'matchInfo.loser_id', 'matchInfo.timestamp'])
-    // .where('user1_id = :uid', { uid : uid })
-    // .orWhere('user2_id = :uid', { uid : uid })
-    // .orderBy('matchInfo.timestamp', 'DESC')
-    // .getRawMany();
-
     const result = await this.matchInfoRepository
     .createQueryBuilder('matchInfo')
     .select(['matchInfo.id', 'matchInfo.match_type', 'matchInfo.winner_score', 'matchInfo.loser_score', 'matchInfo.winner_id', 'matchInfo.loser_id', 'matchInfo.timestamp'])
@@ -86,10 +77,9 @@ export class PongRepository{
       return user.uid;
     })
     .catch((err) => {
-      console.log(err);
+      Logger.error(err);
       return null;
     });
-    console.log(uid);
     
     return uid;
   }
@@ -107,10 +97,42 @@ export class PongRepository{
       return user.name;
     })
     .catch((err) => {
-      console.log(err);
+      Logger.error(err);
       return null;
     });
-    console.log(name);
     return (name);
+  }
+
+  async getUserStatus(
+    uid: number,
+  ){
+    const status: string = await this.userRepository
+    .createQueryBuilder('users')
+    .select('users.status')
+    .where('users.uid = :uid', { uid : uid })
+    .getOne()
+    .then((user) => {
+      if (user === undefined || user === null) return null;
+      return user.status;
+    })
+    .catch((err) => {
+      Logger.error(err);
+      return null;
+    });
+    return (status);
+  }
+
+  async setUserStatus(
+    uid: number,
+    status: UserStatus,
+  ){
+    const user = await this.userRepository.findOne({
+      where: {
+        uid: uid,
+      }
+    });
+    if (user === undefined || user === null) return (false);
+    user.status = status;
+    await this.userRepository.save(user);
   }
 }
