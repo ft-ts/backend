@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { Socket } from "socket.io";
 import { GameService } from "./game/game.service";
 import { MatchType } from "./pong.enum";
@@ -6,34 +6,44 @@ import { MatchType } from "./pong.enum";
 @Injectable()
 export class PongService{
   private _ladderQueue: Array<Socket>;
+
   constructor(
     private readonly gameService: GameService,
   ){
-    console.log('GameService constructor');
+    Logger.debug(`[🏓PongService] constructor`);
     this._ladderQueue = new Array<Socket>();
     setInterval(() => {
       this.matchLadder();
     }, 1000);
   }
 
+  async handleDisconnect(
+    client: Socket,
+  ){
+    Logger.debug(`[🏓PongService] handleDisconnect ${client.data.uid}`);
+    this.cancleLadder(client);
+  }
+
   async joinLadder(
     client: Socket,
   ){
-    console.log('joinLadder');
-    if (this._ladderQueue.indexOf(client) < 0){
+    Logger.log(`[🏓PongService] joinLadder ${client.data.uid}`);
+    const index: number = this._ladderQueue.indexOf(client);
+    if (index === -1){
       this._ladderQueue.push(client);
-    } else {
-      client.emit('pong/ladder/join/fail');
     }
   }
 
   async cancleLadder(
     client: Socket,
   ){
-    console.log('cancleLadder');
     const index: number = this._ladderQueue.indexOf(client);
-    if (index > -1){
+    Logger.log(`[🏓PongService] cancleLadder ${client.data.uid}`);
+    if (index !== -1){
+      Logger.log(`[🏓PongService] cancleLadder ${client.data.uid}`);
       this._ladderQueue.splice(index, 1);
+    } else {
+      Logger.log(`[🏓PongService] cancleLadder fail ${client.data.uid}`);
     }
   }
 
@@ -43,7 +53,7 @@ export class PongService{
       const client1: Socket = this._ladderQueue.shift();
       const client2: Socket = this._ladderQueue.shift();
       if (client1 && client2){
-        console.log('match ladder success');
+        Logger.log(`[🏓PongService] matchLadder success ${client1.data.uid} ${client2.data.uid}`);
         client2.join(`pong_${client1.data.uid}`);
         await this.gameService.createGame(client1, client2, MatchType.LADDER);
       }

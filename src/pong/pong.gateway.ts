@@ -21,15 +21,23 @@ import { Logger } from '@nestjs/common';
     origin: true,
   },
 })
-export class PongGateway {
+export class PongGateway 
+implements OnGatewayDisconnect
+{
+  @WebSocketServer()
+  server: Server;
 
   constructor(
     private readonly pongService: PongService,
     private readonly gameService: GameService,
-    private readonly authService: AuthService,
     private readonly socketService: SocketService,
   ) {
     Logger.debug('PongGateway constructor');
+  }
+
+  handleDisconnect(client: any) {
+    Logger.debug(`[🏓PongGateway] ${client.data.uid} disconnected`);
+    this.pongService.handleDisconnect(client);
   }
 
 
@@ -38,17 +46,10 @@ export class PongGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
   ){
-    console.log('pong/ladder/join', payload);
    /*
     **
     */
     this.pongService.joinLadder(client);
-    const test = await this.socketService.getSocket(client.data.uid);
-    if (test === null){
-      Logger.debug(`[PongGateway joinLadder] ${client.data.uid} is not connected`);
-    } else {
-      Logger.debug(`[PongGateway joinLadder] ${client.data.uid} is connected`);
-    }
     client.emit('pong/ladder/join');
   }
 
@@ -57,7 +58,6 @@ export class PongGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
   ){
-    console.log('pong/ladder/cancle', payload);
    /*
     **
     */
@@ -73,8 +73,6 @@ export class PongGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
   ){
-    console.log('pong/invite', payload);
-
   }
 
   
@@ -86,7 +84,6 @@ export class PongGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
   ){
-    console.log('pong/accept', payload);
    const opponent: Socket | null = await this.socketService.getSocket(payload.uid);
    if (opponent === null){
     Logger.debug(`[PongGateway acceptMatch] ${payload.uid} is not connected`);
@@ -98,7 +95,6 @@ export class PongGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
   ){
-    console.log('pong/reject', payload);
     const opponent: Socket | null = await this.socketService.getSocket(payload.uid);
     if (opponent === null){
       Logger.debug(`[PongGateway rejectMatch] ${payload.uid} is not connected`);
@@ -112,7 +108,6 @@ export class PongGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { key: string, matchID : string },
   ){
-    console.log('pong/keyEvent', payload);
     this.gameService.keyEvent(client, payload);
   }
 
@@ -122,7 +117,7 @@ export class PongGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { matchID: string},
   ){
-    console.log('pong/ready', payload);
-    this.gameService.readyGame(payload);
+    this.gameService.readyGame(client, payload);
   }
+
 }
