@@ -8,7 +8,7 @@ export const gameConstants = {
 export const ballConstatns = {
 ballWidth: 20,
 ballHeight: 20,
-ballSpeed: 5,
+ballSpeed: 10,
 startPosition: {
   x: (gameConstants.canvasWidth - 40) / 2,
   y: (gameConstants.canvasHeight - 40) / 2,

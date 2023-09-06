@@ -1,40 +1,61 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Socket } from "socket.io";
-import { MatchInfo, GameInfo, UpdateMatchInfoDto, ReadyStatus } from "../pong.dto";
-import { Ball } from "../game/entities/ball.entity";
-import { Paddle } from "../game/entities/paddle.entity";
-import { gameConstants} from "./game.constant";
-import { PongRepository } from "../pong.repository";
-import { MatchType } from "../pong.enum"
-import { UserStatus } from "src/user/enums/userStatus.enum";
-
+import { Injectable, Logger } from '@nestjs/common';
+import { Socket } from 'socket.io';
+import { Ball } from '../game/entities/ball.entity';
+import { Paddle } from '../game/entities/paddle.entity';
+import { gameConstants} from './game.constant';
+import { PongRepository } from '../pong.repository';
+import { MatchType } from '../pong.enum';
+import { UserStatus } from 'src/user/enums/userStatus.enum';
+import { MatchInfo, GameInfo, MatchResult, ReadyStatus } from './game.interface';
+import { setMatchInfo, setMatchResult } from './game.utils'
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class GameService{
-
+  
   private _matchInfo : Map<string, MatchInfo>;
   private _readyStatus : Map<string, ReadyStatus>;
+  private _socketCheck : Map<number, boolean>;
+  
   constructor(
     private readonly pongRepository: PongRepository,
   ){
     Logger.debug(`[🏓GameService] constructor`);
     this._matchInfo = new Map<string, MatchInfo>();
     this._readyStatus = new Map<string, ReadyStatus>();
+    this._socketCheck = new Map<number, boolean>();
   }
+    
+  async handleConnection(
+    client: Socket,
+  ){
+    Logger.debug(`[🏓GameService] handleConnection ${client.data.uid}`);
+    this._socketCheck.set(client.data.uid, true);
+  }
+
+  async handleDisconnect(
+    client: Socket,
+  ){
+    Logger.debug(`[🏓GameService] handleDisconnect ${client.data.uid}`);
+    this._socketCheck.set(client.data.uid, false);
+  }
+    
   async createGame(
     client1 : Socket,
     client2 : Socket,
     matchType : MatchType,
   ){
-    const matchInfo : MatchInfo = await this._setMatchInfo(client1, client2, matchType);
-    this._matchInfo.set(matchInfo.matchID, matchInfo);
-    this._readyStatus.set(matchInfo.matchID, {
-      user1: false,
-      user2: false,
+    const client1Elo : number = await this.pongRepository.getUserElo(client1.data.uid);
+    const client2Elo : number = await this.pongRepository.getUserElo(client2.data.uid);
+    const matchInfo : MatchInfo = await setMatchInfo(client1, client2, matchType, client1Elo, client2Elo);
+    this._matchInfo.set(matchInfo.match_id, matchInfo);
+    this._readyStatus.set(matchInfo.match_id, {
+      home : false,
+      away : false,
     });
-    Logger.log(`[🏓GameService] createGame ${matchInfo.matchID} ${matchInfo.user1.data.uid} ${matchInfo.user2.data.uid}`);
-    await client1.emit('pong/game/init', { matchID : matchInfo.matchID});
-    await client2.emit('pong/game/init', { matchID : matchInfo.matchID});
+    Logger.log(`[🏓GameService] createGame ${matchInfo.match_id} ${client1.data.uid} ${client2.data.uid}`);
+    await client1.emit('pong/game/init', { matchID : matchInfo.match_id, isHome : true});
+    await client2.emit('pong/game/init', { matchID : matchInfo.match_id, isHome : false});
   }
 
   async readyGame(
@@ -46,15 +67,23 @@ export class GameService{
     const readyStatus = this._readyStatus.get(payload.matchID);
     const gameInfo : GameInfo = this._matchInfo.get(payload.matchID).gameInfo;
     
-    this.pongRepository.setUserStatus(client.data.uid, UserStatus.IN_GAME);
-    if (client.id === matchInfo.user1.id){
-      client.emit('pong/game/ready', {player1 : gameInfo.player1.toDto(), player2 : gameInfo.player2.toDto(), ball : gameInfo.ball.toDto()});
-      readyStatus.user1 = true;
-    } else if (client.id === matchInfo.user2.id){
-      client.emit('pong/game/ready', {player1 : gameInfo.player2.toDto(), player2 : gameInfo.player1.toDto(), ball : gameInfo.ball.toDto()});
-      readyStatus.user2 = true;
+    const user : User = await this.pongRepository.getUserEntity(client.data.uid);
+    this.pongRepository.updateUserStatus(user, UserStatus.IN_GAME);
+    if (client.data.uid === matchInfo.home.data.uid){
+      client.emit('pong/game/ready', {
+        home : gameInfo.home_paddle.toDto(),
+        away : gameInfo.away_paddle.toDto(),
+        ball : gameInfo.ball.toDto()
+      });
+      readyStatus.home = true;
+    } else if (client.id === matchInfo.away.id){
+      client.emit('pong/game/ready', {
+        home : gameInfo.home_paddle.toDto(),
+        away : gameInfo.away_paddle.toDto(),
+        ball : gameInfo.ball.toDto()});
+      readyStatus.away = true;
     }
-    if (readyStatus.user1 && readyStatus.user2){
+    if (readyStatus.home && readyStatus.away){
       this.startGame(payload.matchID);
     }
   }
@@ -63,7 +92,7 @@ export class GameService{
     matchID: string,
   ){
     const matchInfo: MatchInfo = this._matchInfo.get(matchID);
-    Logger.log(`[🏓GameService] startGame ${matchInfo.matchID}`);
+    Logger.log(`[🏓GameService] startGame ${matchInfo.match_id}`);
     this._gameLoop = this._gameLoop.bind(this);
     matchInfo.interval = setInterval(() => {
       this._gameLoop(matchInfo);
@@ -76,50 +105,11 @@ export class GameService{
       payload : { key: string, matchID : string},
   ){
     Logger.log(`[PongGateway keyEvent] ${client.data.uid} ${payload.key}`);
-    const gameInfo : GameInfo = this._matchInfo.get(payload.matchID).gameInfo;
-    const player : Paddle = client.id === gameInfo.player1.getPlayerID() ? gameInfo.player1 : gameInfo.player2;
+    const matchInfo : MatchInfo = this._matchInfo.get(payload.matchID);
+    if (matchInfo === undefined || matchInfo === null) return (false);
+    const player : Paddle = client.data.uid === matchInfo.home.data.uid ? matchInfo.gameInfo.home_paddle : matchInfo.gameInfo.away_paddle;
+
     player.update(payload.key);
-  }
-    
-  private async _setMatchInfo(
-    client1: Socket,
-    client2: Socket,
-    matchType: MatchType,
-  ) : Promise<MatchInfo>{
-    const gameInfo : GameInfo = await this._setGameInfo(client1, client2);
-    const matchID : string = Math.random().toString(36).slice(2);
-    const matchInfo : MatchInfo = {
-      matchType: matchType,
-      matchID: matchID,
-      user1: client1,
-      user2: client2,
-      user1_score: 0,
-      user2_score: 0,
-      user1_elo: 0,
-      user2_elo: 0,
-      winner_id: 0,
-      loser_id: 0,
-      start_date: new Date(),
-      interval: null,
-      gameInfo: gameInfo,
-    }
-    return (matchInfo);
-  }
-  
-  
-  private async _setGameInfo(
-    client1: Socket,
-    client2: Socket,
-    ) : Promise<GameInfo>{
-      const player1: Paddle = new Paddle(true, client1.id);
-      const player2: Paddle = new Paddle(false, client2.id);
-      const ball: Ball = new Ball(player1, player2);
-      const gameInfo: GameInfo = {
-        player1: player1,
-        player2: player2,
-        ball: ball,
-      }
-      return (gameInfo);
   }
 
   private async _gameLoop(
@@ -127,103 +117,65 @@ export class GameService{
   ){
     const gameInfo : GameInfo = matchInfo.gameInfo;
 
-    gameInfo.ball.update();
-    if (gameInfo.player1.getScore() >= gameConstants.maxScore || 
-    gameInfo.player2.getScore() >= gameConstants.maxScore){
-      clearInterval(matchInfo.interval);
-      await this.endGame(matchInfo);
+    gameInfo.is_finish = await gameInfo.ball.update();
+    if (gameInfo.is_finish){
+      await this._endGame(matchInfo);
+    } else if (this._socketCheck.get(matchInfo.home.data.uid) === false){
+      gameInfo.home_paddle.setScore(-1);
+      await this._endGame(matchInfo);
+    } else if (this._socketCheck.get(matchInfo.away.data.uid) === false) {
+      gameInfo.away_paddle.setScore(-1);
+      await this._endGame(matchInfo);
     } else {
-      matchInfo.user1.emit('pong/game/update', {
-        player1: gameInfo.player1.toDto(),
-        player2: gameInfo.player2.toDto(),
+      matchInfo.home.emit('pong/game/update', {
+        home: gameInfo.home_paddle.toDto(),
+        away: gameInfo.away_paddle.toDto(),
         ball: gameInfo.ball.toDto(),
       });
-      matchInfo.user2.emit('pong/game/update', {
-        player1: gameInfo.player2.toDto(),
-        player2: gameInfo.player1.toDto(),
+      matchInfo.away.emit('pong/game/update', {
+        home: gameInfo.home_paddle.toDto(),
+        away: gameInfo.away_paddle.toDto(),
         ball: gameInfo.ball.toDto(),
       });
     }
   }
 
-  private async endGame(
-    matchInfo: MatchInfo,
+  private async _endGame(
+    matchInfo : MatchInfo 
   ){
-    const gameInfo = matchInfo.gameInfo;
+    clearInterval(matchInfo.interval);
+    this._matchInfo.delete(matchInfo.match_id);
+    this._readyStatus.delete(matchInfo.match_id);
 
-    matchInfo.user1_score = gameInfo.player1.getScore();
-    matchInfo.user2_score = gameInfo.player2.getScore();
-    matchInfo.winner_id = gameInfo.player1.getScore() > gameInfo.player2.getScore() ? matchInfo.user1.data.uid : matchInfo.user2.data.uid;
-    matchInfo.loser_id = gameInfo.player1.getScore() > gameInfo.player2.getScore() ? matchInfo.user2.data.uid : matchInfo.user1.data.uid;
+    const home : User = await this.pongRepository.getUserEntity(matchInfo.home.data.uid);
+    const away : User = await this.pongRepository.getUserEntity(matchInfo.away.data.uid);
+    const matchResult : MatchResult = await setMatchResult(matchInfo, home, away);
+    this.pongRepository.saveMatchInfo(matchResult);
 
-    matchInfo.user1.emit('pong/game/end', {
-      winner: matchInfo.user1.data.uid === matchInfo.winner_id,
-      client1_score: matchInfo.user1_score,
-      client2_score: matchInfo.user2_score,
-    });
-    matchInfo.user2.emit('pong/game/end', {
-      winner: matchInfo.user2.data.uid === matchInfo.winner_id,
-      client1_score: matchInfo.user2_score,
-      client2_score: matchInfo.user1_score,
-    });
-
-    const winner_elo: number = matchInfo.winner_id === matchInfo.user1.data.uid ? matchInfo.user1_elo : matchInfo.user2_elo;
-    const loser_elo: number = matchInfo.winner_id === matchInfo.user1.data.uid ? matchInfo.user2_elo : matchInfo.user1_elo;
-    const winner_new_elo: number = await this.calculateEloPoint(
-      winner_elo,
-      loser_elo,
-      true,
-    );
-    const loser_new_elo: number = await this.calculateEloPoint(
-      loser_elo,
-      winner_elo,
-      false,
-    );
-    this.pongRepository.setUserStatus(matchInfo.user1.data.uid, UserStatus.ONLINE);
-    this.pongRepository.setUserStatus(matchInfo.user2.data.uid, UserStatus.ONLINE);
-    const updatedDto : UpdateMatchInfoDto = await this.createUpdaeMatchInfo(matchInfo);
-    this._readyStatus.delete(matchInfo.matchID);
-    this._matchInfo.delete(matchInfo.matchID);
-    await this.saveGameResult(updatedDto, winner_new_elo, loser_new_elo);
-    Logger.log(`[🏓GameService] endGame ${matchInfo.matchID}`);
-  }
-
-  private async createUpdaeMatchInfo(
-    matchInfo: MatchInfo,
-  ): Promise<UpdateMatchInfoDto>{
-
-    const winner_id = await this.pongRepository.getUserNameByUID(matchInfo.winner_id);
-    const loser_id = await this.pongRepository.getUserNameByUID(matchInfo.loser_id);
-    const updateDto: UpdateMatchInfoDto = {
-      winner_id: winner_id,
-      winner_score: matchInfo.user1_score > matchInfo.user2_score ? matchInfo.user1_score : matchInfo.user2_score,
-      loser_id: loser_id,
-      loser_score: matchInfo.user1_score > matchInfo.user2_score ? matchInfo.user2_score : matchInfo.user1_score,
-      match_type: matchInfo.matchType,
-      timestamp: matchInfo.start_date,
+    const homeScore : number = matchInfo.gameInfo.home_paddle.getScore();
+    const awayScore : number = matchInfo.gameInfo.away_paddle.getScore();
+    matchInfo.home.emit('pong/game/end', {
+      is_win : homeScore > awayScore,
+      home_score : homeScore,
+      away_score : awayScore,
+    })
+    matchInfo.away.emit('pong/game/end', {
+      is_win : awayScore > homeScore,
+      home_score : homeScore,
+      away_score : awayScore,
+    })
+    const winner : User = homeScore > awayScore ? home : away;
+    const winner_elo : number = homeScore > awayScore ? matchInfo.home_elo : matchInfo.away_elo;
+    const loser : User = homeScore > awayScore ? away : home;
+    const loser_elo : number = homeScore > awayScore ? matchInfo.away_elo : matchInfo.home_elo;
+    const matchType : MatchType = matchInfo.match_type;
+    this.pongRepository.updateUserEntity(winner, winner_elo, loser_elo, true, matchType);
+    this.pongRepository.updateUserEntity(loser, loser_elo, winner_elo, false, matchType);
+    if (this._socketCheck.get(matchInfo.home.data.uid) === true){
+      this.pongRepository.updateUserStatus(home, UserStatus.ONLINE);
     }
-    return (updateDto);
-  }
-  
-  private async calculateEloPoint(
-    myPoint: number,
-    otherPoint: number,
-    isWin: boolean,
-  ): Promise<number>{
-    const K: number = 10;
-    const W: number = isWin ? 1 : -1;
-    const We: number = 1 / (1 + Math.pow(10, (otherPoint - myPoint) / 400));
-    const newPoint: number = myPoint + K * (W - We);
-    return (newPoint);
-  }
-
-  private async saveGameResult(
-    matchInfo: UpdateMatchInfoDto,
-    winner_elo: number,
-    loser_elo: number,
-  ){
-    await this.pongRepository.saveMatchInfo(matchInfo);
-    await this.pongRepository.updateUsersElo(matchInfo.winner_id, winner_elo);
-    await this.pongRepository.updateUsersElo(matchInfo.loser_id, loser_elo);
+    if (this._socketCheck.get(matchInfo.away.data.uid) === true){
+      this.pongRepository.updateUserStatus(away, UserStatus.ONLINE);
+    }
   }
 }

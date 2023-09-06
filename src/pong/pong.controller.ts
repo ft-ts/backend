@@ -10,13 +10,6 @@ export class PongController {
     private readonly pongRepository: PongRepository,
     ) {} 
 
-    @Get()
-    getAllMatchHistory() {
-      console.log('get all match history');
-      
-      return this.pongRepository.getAllMatchHistory();
-    }
-
     @Get(':id')
     async getUserMatchHistory(
       @Res() res,

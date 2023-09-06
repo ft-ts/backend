@@ -22,17 +22,19 @@ import { Logger } from '@nestjs/common';
   },
 })
 export class PongGateway 
-implements OnGatewayDisconnect
+implements OnGatewayConnection ,OnGatewayDisconnect
 {
-  @WebSocketServer()
-  server: Server;
-
   constructor(
     private readonly pongService: PongService,
     private readonly gameService: GameService,
     private readonly socketService: SocketService,
   ) {
     Logger.debug('PongGateway constructor');
+  }
+
+  handleConnection(client: any) {
+    Logger.debug(`[🏓PongGateway] ${client.data.uid} connected`);
+    this.pongService.handleConnection(client);
   }
 
   handleDisconnect(client: any) {
@@ -50,7 +52,6 @@ implements OnGatewayDisconnect
     **
     */
     this.pongService.joinLadder(client);
-    client.emit('pong/ladder/join');
   }
 
   @SubscribeMessage('pong/ladder/cancle')
@@ -62,22 +63,26 @@ implements OnGatewayDisconnect
     **
     */
     this.pongService.cancleLadder(client);
-    client.emit('pong/ladder/cancle');
   }
 
   /*
-  ** @payload : { uid: string }
+  ** @payload : { uid: number }
   */
   @SubscribeMessage('pong/match/invite')
   async inviteMatch(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
   ){
+    const opponent: Socket | null = await this.socketService.getSocket(payload.uid);
+    if (opponent === null){
+      Logger.debug(`[PongGateway inviteMatch] ${payload.uid} is not connected`);
+      return ;
+    }
   }
 
   
   /*
-  ** @payload : { uid: string }
+  ** @payload : { uid: number }
   */
   @SubscribeMessage('pong/match/accept')
   async acceptMatch(
@@ -87,7 +92,9 @@ implements OnGatewayDisconnect
    const opponent: Socket | null = await this.socketService.getSocket(payload.uid);
    if (opponent === null){
     Logger.debug(`[PongGateway acceptMatch] ${payload.uid} is not connected`);
+    return ;
    }
+   opponent.emit('pong/match/accept', client.data.uid);
   }
       
   @SubscribeMessage('pong/match/reject')
@@ -98,7 +105,7 @@ implements OnGatewayDisconnect
     const opponent: Socket | null = await this.socketService.getSocket(payload.uid);
     if (opponent === null){
       Logger.debug(`[PongGateway rejectMatch] ${payload.uid} is not connected`);
-      return
+      return ;
     }
     opponent.emit('pong/match/reject', client.data.uid);
   }
