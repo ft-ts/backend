@@ -21,7 +21,7 @@ export class Ball extends Entity {
     this.player2 = awayPlayer;
   }
 
-  update() {
+  update() : boolean{
     this.x += this.dx * this.speed;
     this.y += this.dy * this.speed;
 
@@ -31,6 +31,12 @@ export class Ball extends Entity {
       this.dy = -this.dy;
     } else if (this.ballCollideWithGoal()) {
       this.resetBall();
+    }
+
+    if (this.player1.getScore() >= gameConstants.maxScore || this.player2.getScore() >= gameConstants.maxScore) {
+      return (true);
+    } else {
+      return (false);
     }
   }
 
@@ -53,10 +59,10 @@ export class Ball extends Entity {
 
   ballCollideWithGoal() : boolean{
     if (this.x + this.width > gameConstants.canvasWidth) {
-      this.player1.setScore();
+      this.player1.setScore(1);
       return (true);
     } else if (this.x - this.width < 0) {
-      this.player2.setScore();
+      this.player2.setScore(1);
       return (true);
     }
     return (false);

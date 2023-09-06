@@ -35,7 +35,12 @@ export class Paddle extends Entity {
 
   getScore(): number{ return (this.score); }
 
-  setScore(): void{ ++this.score; }
+  setScore(score : number): void{
+    if (score === -1)
+      this.score = -1;
+    else
+      this.score += score;
+  }
 
   toDto() {
     return {
