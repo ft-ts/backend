@@ -114,7 +114,8 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.editTitle(user, channel , payload.title);
-    await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/editChannel', channel);
+    await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/channelUpdate', channel);
+    console.log('editTitle', channel);
   }
 
   @SubscribeMessage('channel/editPassword')
@@ -123,7 +124,7 @@ export class ChannelGateway {
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.editPassword(user, channel , payload.password);
     await this.server.to(`channel/channel-${channel.id}`).emit('channel/editChannel', "password changed");
-    await client.emit('channel/editChannel', channel.password);
+    await client.emit('channel/channelUpdate', channel.password);
   }
 
   @SubscribeMessage('channel/editMode')
@@ -131,7 +132,7 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.editMode(user, payload.channelId , payload.mode, payload.password);
-    await this.server.to(`channel/channel-${channel.id}`).emit('channel/editChannel', channel.mode);
+    await this.server.to(`channel/channel-${channel.id}`).emit('channel/channelUpdate', channel.mode);
   }
 
   /* ====== */
@@ -142,6 +143,12 @@ export class ChannelGateway {
   async getChannelMembers(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const members = await this.channelService.getChannelMembers(payload.channelId);
     await client.emit('channel/getChannelMembers', members);
+  }
+
+  @SubscribeMessage('channel/getChannelUser')
+  async getChannelUser(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+    const channelUser = await this.channelService.getChannelUser(client.data.uid, payload.channelId);
+    await client.emit('channel/getChannelUser', channelUser);
   }
 
   @SubscribeMessage('channel/grantAdmin')

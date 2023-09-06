@@ -65,13 +65,6 @@ export class ChannelService {
     }
     return channel;
   }
-  
-  async getChannelUser(userId: number, channelId: number): Promise<ChannelUser | null> {
-    const channelUser = await this.channelUserRepository.findOne({
-      where: { user: { id: userId }, channel: { id: channelId } },
-    });
-    return channelUser;
-  }
 
   async getUserByUid(uid: number): Promise<User> {
     return await this.userRepository.findOne({ where: { uid } });
@@ -194,7 +187,7 @@ export class ChannelService {
   }
 
   async leaveChannel(user: User, channel: Channel): Promise<void> {
-    const channelUserToDelete = await this.getChannelUser(user.id, channel.id);
+    const channelUserToDelete = await this.getChannelUser(user.uid, channel.id);
     if (channelUserToDelete) {
       if (channelUserToDelete.role === ChannelRole.OWNER) {
         await this.changeOwner(channel.id);
@@ -227,7 +220,7 @@ export class ChannelService {
   }
 
   async editTitle(user: User, channel: Channel, newTitle: string): Promise<Channel> {
-    const channelOwner = await this.getChannelUser(user.id, channel.id);
+    const channelOwner = await this.getChannelUser(user.uid, channel.id);
     if (channelOwner.role !== ChannelRole.OWNER) {
       throw new NotAuthorizedException('You are not the owner of the channel');
     }
@@ -237,7 +230,7 @@ export class ChannelService {
   }
 
   async editPassword(user: User, channel: Channel, newPassword: string): Promise<Channel> {
-    const channelOwner = await this.getChannelUser(user.id, channel.id);
+    const channelOwner = await this.getChannelUser(user.uid, channel.id);
     if (channelOwner.role !== ChannelRole.OWNER) {
       throw new NotAuthorizedException('You are not the owner of the channel');
     }
@@ -252,7 +245,7 @@ export class ChannelService {
   }
 
   async editMode(user: User, channel: Channel, newMode: ChannelMode, password: string): Promise<Channel> {
-    const channelOwner = await this.getChannelUser(user.id, channel.id);
+    const channelOwner = await this.getChannelUser(user.uid, channel.id);
     if (channelOwner.role !== ChannelRole.OWNER) {
       throw new NotAuthorizedException('You are not the owner of the channel');
     }
@@ -297,6 +290,13 @@ export class ChannelService {
     return sortedMembers;
   }
 
+  async getChannelUser(uid: number, channelId: number): Promise<ChannelUser> {
+    return await this.channelUserRepository.findOne({
+      where: { user: { uid: uid }, channel: { id: channelId } },
+    });
+  }
+
+
   async changeOwner(channelId: number): Promise<void> {
     const members = await this.getChannelMembers(channelId);
     if (members[1]) {
@@ -305,12 +305,12 @@ export class ChannelService {
     }
   }
   
-  async grantAdmin(user: User, channelId: number, targetId: number): Promise<void> {
-    const channelOwner = await this.getChannelUser(user.id, channelId);
+  async grantAdmin(user: User, channelId: number, targetUid: number): Promise<void> {
+    const channelOwner = await this.getChannelUser(user.uid, channelId);
     if (channelOwner.role !== ChannelRole.OWNER) {
       throw new NotAuthorizedException('User is not the owner of the channel');
     }
-    const targetChannelUser = await this.getChannelUser(targetId, channelId);
+    const targetChannelUser = await this.getChannelUser(targetUid, channelId);
     if (targetChannelUser.role === ChannelRole.NORMAL) {
       targetChannelUser.role = ChannelRole.ADMIN;
       await this.channelUserRepository.save(targetChannelUser);
@@ -320,12 +320,12 @@ export class ChannelService {
     }
   }
 
-  async revokeAdmin(user: User, channelId: number, targetId: number): Promise<void> {
-    const channelOwner = await this.getChannelUser(user.id, channelId);
+  async revokeAdmin(user: User, channelId: number, targetUid: number): Promise<void> {
+    const channelOwner = await this.getChannelUser(user.uid, channelId);
     if (channelOwner.role !== ChannelRole.OWNER) {
       throw new NotAuthorizedException('User is not the owner of the channel');
     }
-    const targetChannelUser = await this.getChannelUser(targetId, channelId);
+    const targetChannelUser = await this.getChannelUser(targetUid, channelId);
     if (targetChannelUser.role === ChannelRole.ADMIN) {
       targetChannelUser.role = ChannelRole.NORMAL;
       await this.channelUserRepository.save(targetChannelUser);
@@ -336,7 +336,7 @@ export class ChannelService {
   }
 
   async muteMember(user: User, channelId: number, targetUid: number): Promise<void> {
-    const channelAdmin = await this.getChannelUser(user.id, channelId);
+    const channelAdmin = await this.getChannelUser(user.uid, channelId);
     if (channelAdmin.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the admin of the channel');
     }
@@ -355,7 +355,7 @@ export class ChannelService {
   }
 
   async banMember(user: User, channelId: number, targetUser: User): Promise<void> {
-    const channelAdmin = await this.getChannelUser(user.id, channelId);
+    const channelAdmin = await this.getChannelUser(user.uid, channelId);
     if (channelAdmin.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the admin of the channel');
     }
@@ -363,7 +363,7 @@ export class ChannelService {
     const isBannedTarget = await this.isBannedUser(targetUser, channel);
     if (!isBannedTarget) {
       await channel.banned_uid.push(targetUser.uid);
-      const targetChannelUser = await this.getChannelUser(targetUser.id, channelId);
+      const targetChannelUser = await this.getChannelUser(targetUser.uid, channelId);
       await this.channelUserRepository.delete(targetChannelUser.id);
       await this.channelRepository.save(channel);
     }
@@ -373,7 +373,7 @@ export class ChannelService {
   }
 
   async unbanMember(user: User, channelId: number, targetUser: User): Promise<void> {
-    const channelAdmin = await this.getChannelUser(user.id, channelId);
+    const channelAdmin = await this.getChannelUser(user.uid, channelId);
     if (channelAdmin.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the admin of the channel');
     }
@@ -388,17 +388,17 @@ export class ChannelService {
   }
 
   async kickMember(user: User, channelId: number, targetUser: User): Promise<void> {
-    const channelOwner = await this.getChannelUser(user.id, channelId);
+    const channelOwner = await this.getChannelUser(user.uid, channelId);
     if (channelOwner.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the owner of the channel');
     }
-    const targetChannelUser = await this.getChannelUser(targetUser.id, channelId);
+    const targetChannelUser = await this.getChannelUser(targetUser.uid, channelId);
     await this.channelUserRepository.delete(targetChannelUser.id);
   }
 
   async inviteUserToChannel(user: User, channel: Channel, targetUser: User): Promise<void> {
     const isFull = await this.getMemberCnt(await this.getChannelById(channel.id)) > 4;
-    const targetChannelUser = await this.getChannelUser(targetUser.id, channel.id);
+    const targetChannelUser = await this.getChannelUser(targetUser.uid, channel.id);
     if (channel.mode === ChannelMode.PRIVATE) {
       throw new NotAuthorizedException('Channel is private');
     }
