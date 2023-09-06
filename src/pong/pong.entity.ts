@@ -1,26 +1,29 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { MatchType } from './pong.enum';
+import { User } from 'src/user/entities/user.entity';
 
 @Entity()
 export class MatchInfo {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false })
-  winner_id: string;
+  @ManyToOne(() => User, user => user.name)
+  @JoinColumn({ name: 'home' })
+  home: User;
 
   @Column({ nullable: false })
-  winner_score: number;
+  home_score: number;
+
+  @ManyToOne(() => User, user => user.name)
+  @JoinColumn({ name: 'away' })
+  away: User;
 
   @Column({ nullable: false })
-  loser_id: string;
-
-  @Column({ nullable: false })
-  loser_score: number;
+  away_score: number;
 
   @Column({ nullable: false })
   match_type: MatchType;
 
   @Column()
-  timestamp: Date;
+  start_date: Date;
 }

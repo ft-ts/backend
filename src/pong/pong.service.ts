@@ -17,11 +17,19 @@ export class PongService{
     }, 1000);
   }
 
+  async handleConnection(
+    client: Socket,
+  ){
+    Logger.debug(`[🏓PongService] handleConnection ${client.data.uid}`);
+    this.gameService.handleConnection(client);
+  }
+
   async handleDisconnect(
     client: Socket,
   ){
     Logger.debug(`[🏓PongService] handleDisconnect ${client.data.uid}`);
     this.cancleLadder(client);
+    this.gameService.handleDisconnect(client);
   }
 
   async joinLadder(
@@ -38,7 +46,6 @@ export class PongService{
     client: Socket,
   ){
     const index: number = this._ladderQueue.indexOf(client);
-    Logger.log(`[🏓PongService] cancleLadder ${client.data.uid}`);
     if (index !== -1){
       Logger.log(`[🏓PongService] cancleLadder ${client.data.uid}`);
       this._ladderQueue.splice(index, 1);
