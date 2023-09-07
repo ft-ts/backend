@@ -6,9 +6,7 @@ import { DmType } from './enum/dm.type';
 import { DmResultType } from './enum/dm.result';
 import { Logger, UseGuards } from '@nestjs/common';
 import { CheckBlocked } from 'src/common/guards/block.guard';
-import { AtGuard } from 'src/auth/auth.guard';
 
-@UseGuards(AtGuard)
 @WebSocketGateway({
   cors: {
     origin: true,

@@ -5,11 +5,8 @@ import { ChannelService } from './channel.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { InvalidPasswordException, NotAuthorizedException, NotFoundException } from 'src/common/exceptions/chat.exception';
-import { UseGuards } from '@nestjs/common';
-import { AtGuard } from 'src/auth/auth.guard';
 import { SocketService } from 'src/common/service/socket.service';
 
-@UseGuards(AtGuard)
 @WebSocketGateway({
   cors: {
     origin: true,
