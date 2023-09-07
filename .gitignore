@@ -38,3 +38,8 @@ lerna-debug.log*
 # formatting
 # /.prettierrc
 # /.prettierignore
+
+# environment
+*.env
+.env.local
+.env.development
