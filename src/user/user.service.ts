@@ -8,7 +8,7 @@ import { User } from './entities/user.entity';
 import { Friendship } from './entities/friendship.entity';
 import { UserRepository } from './repositories/user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { Block } from './entities/block.entity';
 
 @Injectable()
@@ -35,6 +35,13 @@ export class UserService {
 
   async findAll() {
     return await this.usersRepository.find({ order: { uid: 'ASC' } });
+  }
+
+  async findAllExceptMe(user: User) {
+    return await this.usersRepository.find({
+      where: { uid: Not(user.uid) },
+      order: { uid: 'ASC' },
+    });
   }
 
   async findChannelUsers() {

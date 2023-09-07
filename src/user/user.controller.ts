@@ -35,6 +35,11 @@ export class UserController {
     return this.usersService.findAll();
   }
 
+  @Get('all/except/me')
+  findAllExcept(@GetUser() user: User) {
+    return this.usersService.findAllExceptMe(user);
+  }
+
   @Get('channels/:id')
   findChannelUsers() {
     return this.usersService.findChannelUsers();
