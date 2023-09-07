@@ -7,8 +7,8 @@ export class AtGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    Logger.debug('[AtGuard] canActivate');
-
+    Logger.debug(`[AtGuard] canActivate [${context.getArgs()[0].method} ${context.getArgs()[0].url}]`);
+    
     const token =
       context.getType() === 'http'
         ? context.switchToHttp().getRequest().headers?.authorization?.split('Bearer ')[1]
