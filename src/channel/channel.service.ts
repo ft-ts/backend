@@ -7,7 +7,7 @@ import { ChannelRole } from './enum/channelRole.enum';
 import { User } from 'src/user/entities/user.entity';
 import { Channel } from './entities/channel.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AlreadyPresentExeption, InvalidPasswordException, MissingPasswordException, NotAuthorizedException, NotFoundException } 
+import { AlreadyPresentExeption, InvalidPasswordException, MissingPasswordException, NotAMemberException, NotAuthorizedException, NotFoundException } 
 from 'src/common/exceptions/chat.exception';
 import { Cm } from './entities/cm.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -142,7 +142,7 @@ export class ChannelService {
     user: User,
     channelId: number,
     password?: string,
-  ): Promise<Channel> {
+  ): Promise<Channel | null> {
     const channel = await this.channelRepository.findOne({
       where: { id: channelId },
     });
@@ -446,5 +446,19 @@ export class ChannelService {
       where: { channel: { id: channel.id} },
     });
     return messages;
+  }
+
+  async sendNotification(createMessageDto: CreateMessageDto): Promise<Cm | undefined> {
+    const channel = await this.getChannelById(createMessageDto.channelId);
+    const message = this.cmRepository.create({
+      channel: channel,
+      sender_uid: null,
+      content: createMessageDto.content,
+      timeStamp: new Date().toISOString().
+      replace(/T/, ' ').      // replace T with a space
+      replace(/\..+/, '')    // delete the dot and everything after,
+    });
+    await this.cmRepository.save(message)
+    return message;
   }
 }
