@@ -39,6 +39,13 @@ export class GameService{
     Logger.debug(`[🏓GameService] handleDisconnect ${client.data.uid}`);
     this._socketCheck.set(client.data.uid, false);
   }
+
+  async getUserInfo(
+    uid : number,
+  ){
+    const user : User = await this.pongRepository.getUserEntity(uid);
+    return (user);
+  }
     
   async createGame(
     client1 : Socket,
@@ -54,8 +61,23 @@ export class GameService{
       away : false,
     });
     Logger.log(`[🏓GameService] createGame ${matchInfo.match_id} ${client1.data.uid} ${client2.data.uid}`);
-    await client1.emit('pong/game/init', { matchID : matchInfo.match_id, isHome : true});
-    await client2.emit('pong/game/init', { matchID : matchInfo.match_id, isHome : false});
+
+    const type : boolean = matchInfo.match_type === MatchType.LADDER;
+    await client1.emit('pong/game/init', { matchID : matchInfo.match_id, isHome : true, type : type});
+    await client2.emit('pong/game/init', { matchID : matchInfo.match_id, isHome : false, type: type});
+  }
+
+  async initGame(
+    client : Socket,
+    payload : { matchID: string, mode: boolean }
+  ){
+    Logger.log(`[🏓GameService] initGame ${payload.matchID}`);
+    const gameInfo : GameInfo = this._matchInfo.get(payload.matchID).gameInfo;
+    if (payload.mode === false)
+      gameInfo.ball.setSpeed(gameConstants.ballSpeed * 1.5);
+    const matchInfo : MatchInfo = this._matchInfo.get(payload.matchID);
+    matchInfo.home.emit('pong/game/set');
+    matchInfo.away.emit('pong/game/set');
   }
 
   async readyGame(
@@ -70,14 +92,14 @@ export class GameService{
     const user : User = await this.pongRepository.getUserEntity(client.data.uid);
     this.pongRepository.updateUserStatus(user, UserStatus.IN_GAME);
     if (client.data.uid === matchInfo.home.data.uid){
-      client.emit('pong/game/ready', {
+      client.emit('pong/game/start', {
         home : gameInfo.home_paddle.toDto(),
         away : gameInfo.away_paddle.toDto(),
         ball : gameInfo.ball.toDto()
       });
       readyStatus.home = true;
     } else if (client.id === matchInfo.away.id){
-      client.emit('pong/game/ready', {
+      client.emit('pong/game/start', {
         home : gameInfo.home_paddle.toDto(),
         away : gameInfo.away_paddle.toDto(),
         ball : gameInfo.ball.toDto()});
@@ -104,7 +126,6 @@ export class GameService{
       client : Socket,
       payload : { key: string, matchID : string},
   ){
-    Logger.log(`[PongGateway keyEvent] ${client.data.uid} ${payload.key}`);
     const matchInfo : MatchInfo = this._matchInfo.get(payload.matchID);
     if (matchInfo === undefined || matchInfo === null) return (false);
     const player : Paddle = client.data.uid === matchInfo.home.data.uid ? matchInfo.gameInfo.home_paddle : matchInfo.gameInfo.away_paddle;
@@ -144,6 +165,7 @@ export class GameService{
     matchInfo : MatchInfo 
   ){
     clearInterval(matchInfo.interval);
+    Logger.log(`[🏓GameService] endGame ${matchInfo.match_id}`);
     this._matchInfo.delete(matchInfo.match_id);
     this._readyStatus.delete(matchInfo.match_id);
 

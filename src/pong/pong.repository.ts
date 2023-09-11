@@ -91,8 +91,9 @@ export class PongRepository{
 
   async getUserMatchHistory(
     name: string,
-  ){
+  ): Promise<any | null>{
     const user: User = await this.getUserByName(name);
+    if (user === null) return null;
     const result = await this.matchInfoRepository
     .createQueryBuilder('matchInfo')
     .select(['matchInfo.id AS id', 'home.name AS home', 'away.name AS away', 'matchInfo.home_score AS home_score', 'matchInfo.away_score AS away_score', 'matchInfo.match_type AS match_type', 'matchInfo.start_date AS start_date'])
@@ -101,18 +102,32 @@ export class PongRepository{
     .where('home.name = :userName', { userName: user.name })
     .orWhere('away.name = :userName', { userName: user.name })
     .orderBy('matchInfo.start_date', 'DESC')
-    .getRawMany();
+    .getRawMany()
+    .then((result) => {
+      if (result === undefined || result === null) return null;
+      return result;
+    }).catch((err) => {
+      Logger.error('getUserMatchHistory',err);
+      return null;
+    });
     return result;
   }
 
   async getUserByName(
     name: string,
-  ){
+  ) : Promise<User | null>{
     const user: User = await this.userRepository
     .createQueryBuilder('users')
     .select(['users.uid', 'users.name', 'users.rating', 'users.ladder_wins', 'users.ladder_losses', 'users.custom_wins', 'users.custom_losses'])
     .where('users.name = :name', { name : name })
-    .getOne();
+    .getOne()
+    .then((user) => {
+      if (user === undefined || user === null) return null;
+      return user;
+    }).catch((err) => {
+      Logger.error(err);
+      return null;
+    });
     return user;
   }
 
