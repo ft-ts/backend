@@ -63,7 +63,6 @@ export class PongService{
       const client2: Socket = this._ladderQueue.shift();
       if (client1 && client2){
         Logger.log(`[🏓PongService] matchLadder success ${client1.data.uid} ${client2.data.uid}`);
-        client2.join(`pong_${client1.data.uid}`);
         await this.gameService.createGame(client1, client2, MatchType.LADDER);
       }
     }
@@ -73,11 +72,5 @@ export class PongService{
     uid: number,
   ){
     return (this.gameService.getUserInfo(uid));
-  }
-  async matchFriend(
-    client1: Socket,
-    client2: Socket,
-  ){
-    
   }
 }

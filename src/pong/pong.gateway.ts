@@ -12,7 +12,6 @@ import { Socket, Server } from 'socket.io';
 import { PongService } from './pong.service';
 import { GameService } from './game/game.service';
 import { MatchType } from './pong.enum';
-import { AuthService } from 'src/auth/auth.service';
 import { SocketService } from 'src/common/service/socket.service';
 import { Logger } from '@nestjs/common';
 import { User } from 'src/user/entities/user.entity';
@@ -145,7 +144,7 @@ implements OnGatewayConnection ,OnGatewayDisconnect
   }
 
 
-  @SubscribeMessage('pong/game/ready')
+  @SubscribeMessage('pong/game/start')
   async ready(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { matchID: string},
