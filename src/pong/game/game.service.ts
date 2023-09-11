@@ -39,6 +39,13 @@ export class GameService{
     Logger.debug(`[🏓GameService] handleDisconnect ${client.data.uid}`);
     this._socketCheck.set(client.data.uid, false);
   }
+
+  async getUserInfo(
+    uid : number,
+  ){
+    const user : User = await this.pongRepository.getUserEntity(uid);
+    return (user);
+  }
     
   async createGame(
     client1 : Socket,
@@ -56,6 +63,16 @@ export class GameService{
     Logger.log(`[🏓GameService] createGame ${matchInfo.match_id} ${client1.data.uid} ${client2.data.uid}`);
     await client1.emit('pong/game/init', { matchID : matchInfo.match_id, isHome : true});
     await client2.emit('pong/game/init', { matchID : matchInfo.match_id, isHome : false});
+  }
+
+  async initGame(
+    client : Socket,
+    payload : { matchID: string, speed: number }
+  ){
+    Logger.log(`[🏓GameService] initGame ${payload.matchID}`);
+    const matchInfo = this._matchInfo.get(payload.matchID);
+    const gameInfo : GameInfo = this._matchInfo.get(payload.matchID).gameInfo;
+    matchInfo.gameInfo.ball.setSpeed(payload.speed);
   }
 
   async readyGame(

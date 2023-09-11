@@ -2,6 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Socket } from "socket.io";
 import { GameService } from "./game/game.service";
 import { MatchType } from "./pong.enum";
+import { UserService } from "src/user/user.service";
+import { User } from "src/user/entities/user.entity";
 
 @Injectable()
 export class PongService{
@@ -67,6 +69,11 @@ export class PongService{
     }
   }
 
+  async getUserInfo(
+    uid: number,
+  ){
+    return (this.gameService.getUserInfo(uid));
+  }
   async matchFriend(
     client1: Socket,
     client2: Socket,
