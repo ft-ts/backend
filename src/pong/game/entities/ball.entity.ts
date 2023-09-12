@@ -73,6 +73,10 @@ export class Ball extends Entity {
     this.y = ballConstatns.startPosition.y;
   }
 
+  setSpeed(speed: number) {
+    this.speed = speed;
+  }
+
   toDto() {
     return {
       ...super.toDto(),

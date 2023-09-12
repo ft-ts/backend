@@ -2,6 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Socket } from "socket.io";
 import { GameService } from "./game/game.service";
 import { MatchType } from "./pong.enum";
+import { UserService } from "src/user/user.service";
+import { User } from "src/user/entities/user.entity";
 
 @Injectable()
 export class PongService{
@@ -61,16 +63,14 @@ export class PongService{
       const client2: Socket = this._ladderQueue.shift();
       if (client1 && client2){
         Logger.log(`[🏓PongService] matchLadder success ${client1.data.uid} ${client2.data.uid}`);
-        client2.join(`pong_${client1.data.uid}`);
         await this.gameService.createGame(client1, client2, MatchType.LADDER);
       }
     }
   }
 
-  async matchFriend(
-    client1: Socket,
-    client2: Socket,
+  async getUserInfo(
+    uid: number,
   ){
-    
+    return (this.gameService.getUserInfo(uid));
   }
 }
