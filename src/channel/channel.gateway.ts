@@ -116,7 +116,7 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.editTitle(user, channel , payload.title);
-    await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/channelUpdate', channel);
+    await this.server.emit('channel/channelUpdate', channel);
     console.log('editTitle', channel);
   }
 
@@ -125,7 +125,7 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.editPassword(user, channel , payload.password);
-    await this.server.to(`channel/channel-${channel.id}`).emit('channel/editChannel', "password changed");
+    await this.server.emit('channel/editChannel', "password changed");
     await client.emit('channel/channelUpdate', channel.password);
   }
 
@@ -134,7 +134,7 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.editMode(user, payload.channelId , payload.mode, payload.password);
-    await this.server.to(`channel/channel-${channel.id}`).emit('channel/channelUpdate', channel.mode);
+    await this.server.emit('channel/channelUpdate', channel.mode);
   }
 
   /* ====== */
