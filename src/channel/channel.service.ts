@@ -56,6 +56,18 @@ export class ChannelService {
     return channel;
   }
 
+  async isChannelMember(user: User, channelId: number): Promise<boolean> {
+    const channel = await this.getChannelById(channelId);
+    if (!channel) {
+      throw new NotFoundException('Channel not found.');
+    }
+    const isMember = await this.channelUserRepository.findOne({
+      where: { user: { uid: user.uid }, channel: { id: channel.id } },
+    });
+    return !!isMember;
+  }
+
+
   async getChannelById(channelId: number): Promise<Channel | undefined> {
     const channel = await this.channelRepository.findOne({
       where: { id: channelId },
@@ -68,10 +80,6 @@ export class ChannelService {
 
   async getUserByUid(uid: number): Promise<User> {
     return await this.userRepository.findOne({ where: { uid } });
-  }
-
-  async getUserById(id: number): Promise<User> {
-    return await this.userRepository.findOne({ where: { id } });
   }
 
   async getMemberCnt(channel: Channel): Promise<number> {
@@ -153,16 +161,24 @@ export class ChannelService {
     if (await this.isBannedUser(user, channel)) {
       throw new NotAuthorizedException('You are banned from the channel');
     }
-    const existingUser = await this.channelUserRepository.findOne({
-      where: { user: { id: user.id }, channel: { id: channel.id } },
-    });
+    const existingUser = await this.isChannelMember(user, channelId);
     const isFull = await this.getMemberCnt(channel) > 4;
     if (isFull) {
       throw new NotAuthorizedException('Channel is full');
     }
     else if (channel.mode === ChannelMode.PRIVATE) {
       throw new NotAuthorizedException('Channel is private');
-    } else if (!!!existingUser) {
+    }
+    else if (channel.mode === ChannelMode.PROTECTED) {
+      if (!password) {
+        throw new MissingPasswordException();
+      }
+      const isPasswordCorrect = await this.verifyPassword({ channelId, password });
+      if (!isPasswordCorrect) {
+        throw new InvalidPasswordException();
+      }
+    }
+     else if (!!!existingUser) {
       await this.joinChannel(user, channel);
     }
     return channel;
@@ -211,7 +227,7 @@ export class ChannelService {
 
   async getMyChannels(user: User): Promise<Channel[]> {
     const channelUsers = await this.channelUserRepository.find({
-      where: { user: { id: user.id } },
+      where: { user: { uid: user.uid } },
       relations: ['channel'],
       order: { id: 'DESC' },
     });
