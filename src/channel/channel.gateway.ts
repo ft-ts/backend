@@ -28,9 +28,12 @@ export class ChannelGateway {
   async handleConnect(@ConnectedSocket() client: Socket) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const userChannels = await this.channelService.getMyChannels(user);
+
     for (const channel of userChannels) {
       await client.join(`channel/channel-${channel.id}`);
+      // console.log('handleConnect: join channel', channel.id);
     }
+    console.log('handleConnect: join channel', userChannels);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -39,6 +42,7 @@ export class ChannelGateway {
       for (const channel of userChannels) {
         await client.leave(`channel/channel-${channel.id}`);
       }
+      console.log('handleDisconnect: leave channel', userChannels);
   }
 
   /* ======= */
@@ -62,6 +66,7 @@ export class ChannelGateway {
     const channel = await this.channelService.enterChannel(user, payload.chId, payload.password);
     await client.join(`channel/channel-${payload.chId}`);
     await this.server.to(`channel/channel-${payload.chId}`).emit('channel/userJoined', { chId: channel.id, user: user.name });
+    console.log('joinChannel BACK');//
     await this.server.to(`channel/channel-${payload.chId}`).emit('channel/channelUpdate', channel);
   } catch (error) {
     if (error instanceof NotFoundException) {

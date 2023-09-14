@@ -9,6 +9,9 @@ export class Cm extends BaseEntity {
 
   @ManyToOne(() => Channel, (channel) => channel.message)
   channel: Channel;
+
+  @Column( { nullable: false })
+  isNotice: boolean;
   
   @Column('int', { nullable: true })
   sender_uid: number;

@@ -447,6 +447,7 @@ export class ChannelService {
     }
     const message = this.cmRepository.create({
       channel: channel,
+      isNotice: false,
       sender_uid: user.uid,
       content: createMessageDto.content,
       timeStamp: new Date().toISOString().
@@ -468,6 +469,7 @@ export class ChannelService {
     const channel = await this.getChannelById(createMessageDto.channelId);
     const message = this.cmRepository.create({
       channel: channel,
+      isNotice: true,
       sender_uid: null,
       content: createMessageDto.content,
       timeStamp: new Date().toISOString().
