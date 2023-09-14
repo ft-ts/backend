@@ -28,9 +28,12 @@ export class ChannelGateway {
   async handleConnect(@ConnectedSocket() client: Socket) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const userChannels = await this.channelService.getMyChannels(user);
+
     for (const channel of userChannels) {
       await client.join(`channel/channel-${channel.id}`);
+      // console.log('handleConnect: join channel', channel.id);
     }
+    console.log('handleConnect: join channel', userChannels);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -39,6 +42,7 @@ export class ChannelGateway {
       for (const channel of userChannels) {
         await client.leave(`channel/channel-${channel.id}`);
       }
+      console.log('handleDisconnect: leave channel', userChannels);
   }
 
   /* ======= */
@@ -55,13 +59,14 @@ export class ChannelGateway {
     await this.server.to(`channel/channel-${channel.id}`).emit('channel/createChannel', channel.id);
   }
 
-  @SubscribeMessage('channel/enterChannel')
-  async enterChannel(client: Socket, payload: any) {
+  @SubscribeMessage('channel/joinChannel')
+  async joinChannel(client: Socket, payload: any) {
   try {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.enterChannel(user, payload.chId, payload.password);
-    await client.emit('channel/enterChannel');
     await client.join(`channel/channel-${payload.chId}`);
+    await this.server.to(`channel/channel-${payload.chId}`).emit('channel/userJoined', { chId: channel.id, user: user.name });
+    console.log('joinChannel BACK');//
     await this.server.to(`channel/channel-${payload.chId}`).emit('channel/channelUpdate', channel);
   } catch (error) {
     if (error instanceof NotFoundException) {
@@ -140,6 +145,13 @@ export class ChannelGateway {
   /* ====== */
   /* Member */
   /* ====== */
+
+  @SubscribeMessage('channel/isChannelMember')
+  async isChannelMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+    const user = await this.channelService.getAuthenticatedUser(client.data.uid);
+    const isChannelMember = await this.channelService.isChannelMember(user, payload.chId);
+    await client.emit('channel/isChannelMember', isChannelMember);
+  }
   
   @SubscribeMessage('channel/getChannelMembers')
   async getChannelMembers(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
