@@ -25,7 +25,7 @@ export class ChannelGateway {
   @WebSocketServer()
   server: Server;
 
-  async handleConnect(@ConnectedSocket() client: Socket) {
+  async handleConnection(@ConnectedSocket() client: Socket) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const userChannels = await this.channelService.getMyChannels(user);
 
@@ -61,13 +61,9 @@ export class ChannelGateway {
 
   @SubscribeMessage('channel/joinChannel')
   async joinChannel(client: Socket, payload: any) {
-  try {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
-    const channel = await this.channelService.enterChannel(user, payload.chId, payload.password);
-    await client.join(`channel/channel-${payload.chId}`);
-    await this.server.to(`channel/channel-${payload.chId}`).emit('channel/userJoined', { chId: channel.id, user: user.name });
-    console.log('joinChannel BACK');//
-    await this.server.to(`channel/channel-${payload.chId}`).emit('channel/channelUpdate', channel);
+  try {
+    await this.channelService.enterChannel(user, payload.chId, payload.password);
   } catch (error) {
     if (error instanceof NotFoundException) {
       client.emit('channel/error', { message: 'Channel not found' });
@@ -79,18 +75,20 @@ export class ChannelGateway {
       client.emit('channel/error', { message: 'Failed to enter channel' });
     }
   }
+  const channel = await this.channelService.getChannelById(payload.chId);
+  await client.join(`channel/channel-${payload.chId}`);
+  await this.server.to(`channel/channel-${payload.chId}`).emit('channel/userJoined', { chId: payload.chId, user: user.name });
+  await this.server.to(`channel/channel-${payload.chId}`).emit('channel/channelUpdate', channel);
 }
-  @SubscribeMessage('channel/leaveChannel')
-  async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+@SubscribeMessage('channel/leaveChannel')
+async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.leaveChannel(user, channel);
-    await client.leave(`channel/channel-${payload.channelId}`);
     await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/userLeft', { chId: channel.id, user: user.name });
+    await client.leave(`channel/channel-${payload.channelId}`);
     await this.server.emit('channel/channelUpdate', channel);
   }
-
-
 
   @SubscribeMessage('channel/getAllChannels')
   async getAllChannels(@ConnectedSocket() client: Socket) {

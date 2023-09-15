@@ -157,7 +157,6 @@ export class ChannelService {
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
-
     if (await this.isBannedUser(user, channel)) {
       throw new NotAuthorizedException('You are banned from the channel');
     }
@@ -177,8 +176,12 @@ export class ChannelService {
       if (!isPasswordCorrect) {
         throw new InvalidPasswordException();
       }
+      else
+      {
+        await this.joinChannel(user, channel);
+      }
     }
-     else if (!!!existingUser) {
+    else if (!existingUser) {
       await this.joinChannel(user, channel);
     }
     return channel;
@@ -461,6 +464,7 @@ export class ChannelService {
   async getChannelMessages(channel: Channel): Promise<Cm[]> {
     const messages = await this.cmRepository.find({
       where: { channel: { id: channel.id} },
+      order: { timeStamp: 'ASC' },
     });
     return messages;
   }
