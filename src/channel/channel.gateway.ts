@@ -58,13 +58,9 @@ export class ChannelGateway {
 
   @SubscribeMessage('channel/joinChannel')
   async joinChannel(client: Socket, payload: any) {
-  try {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
-    const channel = await this.channelService.enterChannel(user, payload.chId, payload.password);
-    await client.join(`channel/channel-${payload.chId}`);
-    await this.server.to(`channel/channel-${payload.chId}`).emit('channel/userJoined', { chId: channel.id, user: user.name });
-    console.log('joinChannel BACK');//
-    await this.server.to(`channel/channel-${payload.chId}`).emit('channel/channelUpdate', channel);
+  try {
+    await this.channelService.enterChannel(user, payload.chId, payload.password);
   } catch (error) {
     if (error instanceof NotFoundException) {
       client.emit('channel/error', { message: 'Channel not found' });
@@ -76,9 +72,13 @@ export class ChannelGateway {
       client.emit('channel/error', { message: 'Failed to enter channel' });
     }
   }
+  const channel = await this.channelService.getChannelById(payload.chId);
+  await client.join(`channel/channel-${payload.chId}`);
+  await this.server.to(`channel/channel-${payload.chId}`).emit('channel/userJoined', { chId: payload.chId, user: user.name });
+  await this.server.to(`channel/channel-${payload.chId}`).emit('channel/channelUpdate', channel);
 }
-  @SubscribeMessage('channel/leaveChannel')
-  async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+@SubscribeMessage('channel/leaveChannel')
+async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.leaveChannel(user, channel);
