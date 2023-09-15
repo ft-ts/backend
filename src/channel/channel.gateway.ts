@@ -25,15 +25,13 @@ export class ChannelGateway {
   @WebSocketServer()
   server: Server;
 
-  async handleConnect(@ConnectedSocket() client: Socket) {
+  async handleConnection(@ConnectedSocket() client: Socket) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const userChannels = await this.channelService.getMyChannels(user);
 
     for (const channel of userChannels) {
       await client.join(`channel/channel-${channel.id}`);
-      // console.log('handleConnect: join channel', channel.id);
     }
-    console.log('handleConnect: join channel', userChannels);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -42,7 +40,6 @@ export class ChannelGateway {
       for (const channel of userChannels) {
         await client.leave(`channel/channel-${channel.id}`);
       }
-      console.log('handleDisconnect: leave channel', userChannels);
   }
 
   /* ======= */
@@ -85,12 +82,10 @@ export class ChannelGateway {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
     await this.channelService.leaveChannel(user, channel);
-    await client.leave(`channel/channel-${payload.channelId}`);
     await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/userLeft', { chId: channel.id, user: user.name });
+    await client.leave(`channel/channel-${payload.channelId}`);
     await this.server.emit('channel/channelUpdate', channel);
   }
-
-
 
   @SubscribeMessage('channel/getAllChannels')
   async getAllChannels(@ConnectedSocket() client: Socket) {
