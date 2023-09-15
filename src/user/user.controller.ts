@@ -51,15 +51,13 @@ export class UserController {
     return result;
   }
 
-  @Get('friends/all')
-  findAllFriendships() {
-    return this.usersService.findAllFriendships();
-  }
-
   @Post('friends')
-  createFriendship(@GetUser() user: User, @Body() body) {
+  async createFriendship(@GetUser() user: User, @Body() body) {
     const { targetUid } = body;
-    return this.usersService.createFriendship(user, targetUid);
+    const res = await this.usersService.createFriendship(user, targetUid).catch((err) => {
+      return err;
+    });
+    return res;
   }
 
   @Delete('friends')
