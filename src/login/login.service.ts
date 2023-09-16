@@ -18,8 +18,7 @@ export class LoginService {
     Logger.debug('[AuthService onModuleInit] All Users Status => OFFLINE');
   }
 
-  async getTokens(userInfo: User): Promise<Tokens> {
-    const { uid, email, twoFactorAuth } = userInfo;
+  async getTokens({ uid, email, twoFactorAuth }): Promise<Tokens> {
     const tokens = await Promise.all([
       this.jwtService.signAsync({ uid, email, twoFactorAuth }),
       this.jwtService.signAsync(
@@ -29,12 +28,13 @@ export class LoginService {
     ]);
 
     return {
+      message: 'Login Success',
       accessToken: tokens[0],
       refreshToken: tokens[1],
     };
   }
 
-  async validateUser(userInfo): Promise<Tokens> {
+  async validateUser(userInfo): Promise<{tokens: Tokens, redirectUrl: string}> {
     Logger.debug('# AuthService validateUser');
 
     try {
@@ -43,12 +43,17 @@ export class LoginService {
       });
 
       if (existUser) {
-        const tokens: Tokens = await this.getTokens(existUser);
+        let redirectUrl = '/main';
+        if (existUser.twoFactorAuth) {
+          Logger.warn('# User Found! But Two Factor Auth is Enabled');
+          redirectUrl = '/login/2fa';
+        }
+        const tokens: Tokens = await this.getTokens({ uid: existUser.uid, email: existUser.email, twoFactorAuth: false });
         await this.updateRefreshToken(existUser, tokens.refreshToken);
-
-        return tokens;
+        return {tokens, redirectUrl};
       }
 
+      // 새 유저
       Logger.warn('# User Not Found! Creating New User...');
 
       const newUser: User = this.loginRepository.create({
@@ -60,10 +65,10 @@ export class LoginService {
       });
 
       await this.loginRepository.save(newUser);
-      const tokens: Tokens = await this.getTokens(newUser);
+      const tokens: Tokens = await this.getTokens({ uid: existUser.uid, email: existUser.email, twoFactorAuth: false });
       await this.updateRefreshToken(newUser, tokens.refreshToken);
 
-      return tokens;
+      return {tokens, redirectUrl: '/main'};
 
     } catch (error) {
       Logger.debug('# AuthService validateUser Error', error);
@@ -76,7 +81,7 @@ export class LoginService {
 
     try {
       const _user = await this.loginRepository.findOneBy({
-        id: user.id,
+        id: user.id, // uid로 변경?
       });
       if (!_user) throw new ForbiddenException('Access Denied (User Not Found)');
       await this.loginRepository.update(user.id, { hashedRt });
@@ -86,6 +91,7 @@ export class LoginService {
     }
   }
 
+  // 작동하는지 확인 필요
   async logout(user: User): Promise<{ message: string }> {
     try {
       const _user: User = await this.loginRepository.findOneBy({
@@ -102,7 +108,8 @@ export class LoginService {
     }
     return { message: 'Logout Success' };
   }
-
+  
+  // 작동하는지 확인 필요
   async refreshTokens(user: User): Promise<Tokens> {
     Logger.debug('# AuthService refreshTokens');
     const _user = await this.loginRepository.findOneBy({
@@ -116,17 +123,7 @@ export class LoginService {
     return tokens;
   }
 
-  async validateOtp(payload: any, code: string) {
-    const user = await this.loginRepository.findOneBy({ id: payload.id });
-
-    if (code !== authenticator.generate(user.qrSecret)) {
-      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
-    }
-
-    return { message: 'Success' };
-  }
-
-  generateData(otpURI): Promise<string> {
+  async generateData(otpURI): Promise<string> {
     return new Promise((resolve, reject) => {
       QRCode.toDataURL(otpURI, (err, imgData) => {
         if (err) reject(err);
@@ -137,11 +134,14 @@ export class LoginService {
 
   async createQRCode(user: User): Promise<string> {
     Logger.debug('# AuthService createQRCode');
-    let data: string;
     try {
+      // 유저의 QR Secret을 가져온다.
       const { qrSecret } = await this.loginRepository.findOneBy({ uid: user.uid });
+
+      // OTP URI를 생성한다.
       const otpURI = authenticator.keyuri(user.uid.toString(), process.env.TFA_SECRET, qrSecret);
 
+      // QR 이미지 생성
       return await this.generateData(otpURI);
     } catch (error) {
       Logger.error('# AuthService createQRCode Error', error);
@@ -150,20 +150,12 @@ export class LoginService {
   }
 
   async validate2FA(userInfo: User, code: string) {
-
     const user = await this.loginRepository.findOneBy({ uid: userInfo.uid });
-    if (+code !== +authenticator.generate(user.qrSecret)) {
-      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
-    }
-    await this.loginRepository.update({ uid: user.uid }, { twoFactorAuth: true });
-    const updatedUser = await this.loginRepository.findOneBy({ uid: user.uid });
-    return this.getTokens(updatedUser);
+    if (+code !== +authenticator.generate(user.qrSecret))
+      return null;
+
+    return this.getTokens({ uid: user.uid, email: user.email, twoFactorAuth: true });
   }
-
-
-
-
-
 
   /**
    * 🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮
@@ -183,6 +175,7 @@ export class LoginService {
     ]);
 
     return {
+      message: 'Login Success (Demo)',
       accessToken: tokens[0],
       refreshToken: tokens[1],
     };

@@ -7,9 +7,9 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { InvalidPasswordException, NotAMemberException, NotAuthorizedException, NotFoundException } from 'src/common/exceptions/chat.exception';
 import { SocketService } from 'src/common/service/socket.service';
 
-// import { UseGuards } from '@nestjs/common';
-// import { AtGuard } from 'src/auth/auth.guard';
-// @UseGuards(AtGuard)
+import { UseGuards } from '@nestjs/common';
+import { AtGuard } from 'src/auth/auth.guard';
+@UseGuards(AtGuard)
 @WebSocketGateway({
   cors: {
     origin: true,
@@ -33,7 +33,7 @@ export class ChannelGateway {
       await client.join(`channel/channel-${channel.id}`);
       // console.log('handleConnect: join channel', channel.id);
     }
-    console.log('handleConnect: join channel', userChannels);
+    // console.log('handleConnect: join channel', userChannels);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {

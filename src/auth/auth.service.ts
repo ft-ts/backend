@@ -16,6 +16,10 @@ export class AuthService {
     private userRepository: Repository<User>,
   ) { }
 
+  async getUserInfo (uid: number) {
+    return await this.userRepository.findOneBy({ uid });
+  }
+
   validateAccessToken(jwtToken: any) {
     try {
       const payload: any = this.jwtService.verify(jwtToken);
