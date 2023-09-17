@@ -13,6 +13,7 @@ import { Cm } from './entities/cm.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { ChannelUser } from './entities/channelUser.entity';
 import { ChannelPasswordDto } from './dto/channel-password.dto';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class ChannelService {
@@ -311,10 +312,14 @@ export class ChannelService {
     return sortedMembers;
   }
 
-  async getChannelUser(uid: number, channelId: number): Promise<ChannelUser> {
-    return await this.channelUserRepository.findOne({
+  async getChannelUser(uid: number, channelId: number): Promise<ChannelUser | null> {
+    const channelUser = await this.channelUserRepository.findOne({
       where: { user: { uid: uid }, channel: { id: channelId } },
+    }).catch((err) => {
+      Logger.error(err);
+      return err;
     });
+    return channelUser;
   }
 
 
@@ -419,19 +424,20 @@ export class ChannelService {
 
   async inviteUserToChannel(user: User, channel: Channel, targetUser: User): Promise<void> {
     const isFull = await this.getMemberCnt(await this.getChannelById(channel.id)) > 4;
-    const targetChannelUser = await this.getChannelUser(targetUser.uid, channel.id);
+    const targetChannelUser : ChannelUser | null = await this.getChannelUser(targetUser.uid, channel.id);
+
     if (isFull) {
       throw new NotAuthorizedException('Channel is full');
     }
-    else if (!targetChannelUser) {
-      await this.joinChannel(targetUser, await this.getChannelById(channel.id));
+    else if (targetChannelUser) {
+      throw new NotAuthorizedException('User is already a member of the channel');
     }
     else if (await this.isBannedUser(targetUser, channel)) {
       throw new NotAuthorizedException('User is banned from the channel');
     }
     else
     {
-      throw new NotAuthorizedException('User is already a member of the channel');
+      await this.joinChannel(targetUser, await this.getChannelById(channel.id));
     }
   }
 
