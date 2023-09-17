@@ -17,8 +17,8 @@ export class AtGuard implements CanActivate {
         ? context.switchToHttp().getRequest().headers?.authorization?.split('Bearer ')[1]
         : context.switchToWs().getClient().handshake?.auth.token;
 
-    if (!token) {
-      Logger.debug('[AtGuard] No token. redirected to /login');
+    if (!token || !this.authService.validateAccessToken(token)) {
+      Logger.debug('[AtGuard] Invalid token. redirected to /login');
       if (context.getType() === 'ws')
         context.switchToWs().getClient().emit('redirect', '/login');
       else
