@@ -72,6 +72,7 @@ export class ChannelGateway {
     } else {
       client.emit('channel/error', { message: error.message });
     }
+    return ;
   }
   const channel = await this.channelService.getChannelById(payload.chId);
   await client.join(`channel/channel-${payload.chId}`);
@@ -163,15 +164,15 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
 
   @SubscribeMessage('channel/grantAdmin')
-  async grantAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async grantAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
-    await this.channelService.grantAdmin(user, payload.channelId , targetUser.id);
+    await this.channelService.grantAdmin(user, payload.channelId , targetUser.uid);
     this.server.to(`channel/channel-${payload.channelId}`).emit('channel/updateMemberRole', { channelId: payload.channelId, targetUser: targetUser.name });
   }
   
   @SubscribeMessage('channel/revokeAdmin')
-  async revokeAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async revokeAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
     await this.channelService.revokeAdmin(user, payload.channelId , targetUser.id);
@@ -179,7 +180,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
   
   @SubscribeMessage('channel/muteMember')
-  async muteMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async muteMember(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
     await this.channelService.muteMember(user, payload.channelId , targetUser.uid);
@@ -187,7 +188,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
   
   @SubscribeMessage('channel/banMember')
-  async banMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async banMember(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
     await this.channelService.banMember(user, payload.channelId , targetUser);
@@ -208,7 +209,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
   
   @SubscribeMessage('channel/kickMember')
-  async kickMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async kickMember(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUserSocket = await this.socketService.getSocket(payload.targetUserUid);
     if (!!targetUserSocket) {
@@ -221,7 +222,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
   
   @SubscribeMessage('channel/inviteUserToChannel')
-  async inviteUserToChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async inviteUserToChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUid);
     const channel = await this.channelService.getChannelById(payload.channelId);
