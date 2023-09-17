@@ -230,6 +230,9 @@ export class ChannelService {
       where: { user: { uid: user.uid } },
       relations: ['channel'],
       order: { id: 'DESC' },
+    }).catch((err) => {
+      console.log(err);
+      return err;
     });
     const channels = channelUsers.map((channelUser) => channelUser.channel);
     return channels;
