@@ -1,5 +1,5 @@
 import { Injectable, Body } from '@nestjs/common';
-import { Not, Repository } from 'typeorm';
+import { MoreThan, Not, Repository } from 'typeorm';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import * as bcrypt from 'bcrypt';
 import { ChannelMode } from './enum/channelMode.enum';
@@ -7,7 +7,7 @@ import { ChannelRole } from './enum/channelRole.enum';
 import { User } from 'src/user/entities/user.entity';
 import { Channel } from './entities/channel.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AlreadyPresentExeption, InvalidPasswordException, MissingPasswordException, NotAuthorizedException, NotFoundException } 
+import { AlreadyPresentExeption, InvalidPasswordException, MissingPasswordException, NotAMemberException, NotAuthorizedException, NotFoundException } 
 from 'src/common/exceptions/chat.exception';
 import { Cm } from './entities/cm.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -56,6 +56,18 @@ export class ChannelService {
     return channel;
   }
 
+  async isChannelMember(user: User, channelId: number): Promise<boolean> {
+    const channel = await this.getChannelById(channelId);
+    if (!channel) {
+      throw new NotFoundException('Channel not found.');
+    }
+    const isMember = await this.channelUserRepository.findOne({
+      where: { user: { uid: user.uid }, channel: { id: channel.id } },
+    });
+    return !!isMember;
+  }
+
+
   async getChannelById(channelId: number): Promise<Channel | undefined> {
     const channel = await this.channelRepository.findOne({
       where: { id: channelId },
@@ -68,10 +80,6 @@ export class ChannelService {
 
   async getUserByUid(uid: number): Promise<User> {
     return await this.userRepository.findOne({ where: { uid } });
-  }
-
-  async getUserById(id: number): Promise<User> {
-    return await this.userRepository.findOne({ where: { id } });
   }
 
   async getMemberCnt(channel: Channel): Promise<number> {
@@ -142,27 +150,36 @@ export class ChannelService {
     user: User,
     channelId: number,
     password?: string,
-  ): Promise<Channel> {
+  ): Promise<Channel | null> {
     const channel = await this.channelRepository.findOne({
       where: { id: channelId },
     });
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
-
     if (await this.isBannedUser(user, channel)) {
       throw new NotAuthorizedException('You are banned from the channel');
     }
-    const existingUser = await this.channelUserRepository.findOne({
-      where: { user: { id: user.id }, channel: { id: channel.id } },
-    });
+    const existingUser = await this.isChannelMember(user, channelId);
     const isFull = await this.getMemberCnt(channel) > 4;
     if (isFull) {
       throw new NotAuthorizedException('Channel is full');
     }
     else if (channel.mode === ChannelMode.PRIVATE) {
       throw new NotAuthorizedException('Channel is private');
-    } else if (!!!existingUser) {
+    }
+    else if (channel.mode === ChannelMode.PROTECTED) {
+      if (!password) {
+        throw new MissingPasswordException();
+      }
+      const isPasswordCorrect = await this.verifyPassword({ channelId, password });
+      if (!isPasswordCorrect) {
+        throw new InvalidPasswordException();
+      }
+      else
+        await this.joinChannel(user, channel);
+    }
+    else if (!existingUser) {
       await this.joinChannel(user, channel);
     }
     return channel;
@@ -192,13 +209,14 @@ export class ChannelService {
       if (channelUserToDelete.role === ChannelRole.OWNER) {
         await this.changeOwner(channel.id);
       }
-      await this.channelUserRepository.delete(channelUserToDelete.id);
-    }
-    channel.memberCnt = await this.getMemberCnt(channel);
-    await this.channelRepository.save(channel);
-    if (await this.getMemberCnt(channel) === 0) {
-      await this.cmRepository.delete({ channel: { id: channel.id } });
-      await this.channelRepository.remove(channel);
+      await this.channelUserRepository.remove(channelUserToDelete);
+      await this.userRepository.save(user);
+      channel.memberCnt = await this.getMemberCnt(channel);
+      await this.channelRepository.save(channel);
+      if (await this.getMemberCnt(channel) === 0) {
+        await this.cmRepository.delete({ channel: { id: channel.id } });
+        await this.channelRepository.remove(channel);
+      }
     }
   }
 
@@ -211,9 +229,12 @@ export class ChannelService {
 
   async getMyChannels(user: User): Promise<Channel[]> {
     const channelUsers = await this.channelUserRepository.find({
-      where: { user: { id: user.id } },
+      where: { user: { uid: user.uid } },
       relations: ['channel'],
       order: { id: 'DESC' },
+    }).catch((err) => {
+      console.log(err);
+      return err;
     });
     const channels = channelUsers.map((channelUser) => channelUser.channel);
     return channels;
@@ -431,6 +452,7 @@ export class ChannelService {
     }
     const message = this.cmRepository.create({
       channel: channel,
+      isNotice: false,
       sender_uid: user.uid,
       content: createMessageDto.content,
       timeStamp: new Date().toISOString().
@@ -441,10 +463,33 @@ export class ChannelService {
     return message;
   }
 
-  async getChannelMessages(channel: Channel): Promise<Cm[]> {
+
+  async getChannelMessages(user: User, channel: Channel): Promise<Cm[]> {
+    const channelUser = await this.channelUserRepository.findOne({
+      where: { user: { uid: user.uid }, channel: { id: channel.id } },
+    });
     const messages = await this.cmRepository.find({
-      where: { channel: { id: channel.id} },
+      where: {
+        channel: { id: channel.id },
+        timeStamp: MoreThan(channelUser.joined_at), // joined_at 이후의 메시지만 가져옴
+      },
+      order: { timeStamp: 'ASC' },
     });
     return messages;
+  }
+
+  async sendNotification(createMessageDto: CreateMessageDto): Promise<Cm | undefined> {
+    const channel = await this.getChannelById(createMessageDto.channelId);
+    const message = this.cmRepository.create({
+      channel: channel,
+      isNotice: true,
+      sender_uid: null,
+      content: createMessageDto.content,
+      timeStamp: new Date().toISOString().
+      replace(/T/, ' ').      // replace T with a space
+      replace(/\..+/, '')    // delete the dot and everything after,
+    });
+    await this.cmRepository.save(message)
+    return message;
   }
 }

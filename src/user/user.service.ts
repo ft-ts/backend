@@ -28,7 +28,8 @@ export class UserService {
     return !!user;
 }
 
-  async updateUser(user: User, body) {
+//   async updateUser(user: User, body) {
+  async updateUser(user: User, body: Partial<User>) {
 
     if (body.uid || body.email)
       throw new BadRequestException('Cannot change uid or email');
@@ -49,6 +50,8 @@ export class UserService {
     }else{
         console.log("true?", newUser.twoFactorAuth)
     }
+
+    await this.usersRepository.update({uid: user.uid}, body);
     return await this.usersRepository.findOneBy({ uid: user.uid });
   }
 
@@ -68,15 +71,15 @@ export class UserService {
   }
 
   async findFriends(user: User) {
-    return await this.friendshipRepository
+    const friends = await this.friendshipRepository
       .createQueryBuilder('friendship')
       .leftJoinAndSelect('friendship.user', 'user')
       .leftJoinAndSelect('friendship.friend', 'friend')
-      .where('user.uid = :uid', {
-        uid: user.uid,
-      })
-      .select(['friendship.id', 'user.name', 'user.uid', 'friend.name', 'friend.uid'])
+      .where('user.uid = :uid', { uid: user.uid, })
+      .select(['friendship.id', 'user.name', 'user.uid', 'friend'])
       .getMany();
+
+    return friends.map((friendship) => friendship.friend);
   }
 
   async findOne(uid: number) {
@@ -106,6 +109,7 @@ export class UserService {
       where: { uid: targetUid },
       relations: ['friendships'],
     });
+
     if (!user || !user2) throw new NotFoundException(`User not found`);
 
     const existingFriendship = await this.friendshipRepository
@@ -115,7 +119,6 @@ export class UserService {
         friendId: user2.id,
       })
       .getOne();
-
     if (existingFriendship) {
       throw new BadRequestException('The friendship already exists');
     }
@@ -154,16 +157,6 @@ export class UserService {
 
     Logger.debug(`[UserService deleteFriendship] ${friendship.user.name}(${friendship.user.uid})와 ${friendship.friend.name}(${friendship.friend.uid})의 친구관계를 삭제합니다.`);
     return await this.friendshipRepository.delete(friendship.id);
-  }
-
-
-  async findAllFriendships() {
-    return await this.friendshipRepository
-      .createQueryBuilder('friendship')
-      .leftJoinAndSelect('friendship.user', 'user')
-      .leftJoinAndSelect('friendship.friend', 'friend')
-      .select(['friendship.id', 'user.name', 'user.uid', 'friend.name', 'friend.uid'])
-      .getMany();
   }
 
   /**

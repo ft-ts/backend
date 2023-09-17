@@ -16,11 +16,9 @@ export class PongController {
       @GetUser() user: any,
       @Param('id') id: string,
     ) {
-      console.log('get user match history', user.uid, id);
       const data = {
         history : await this.pongRepository.getUserMatchHistory(id)
       };
       res.status(200).json(data);
-      // return this.pongRepository.getUserMatchHistory(id);
     }
 }

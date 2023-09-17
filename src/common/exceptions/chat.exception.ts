@@ -29,3 +29,9 @@ export class AlreadyPresentExeption extends HttpException {
     super(message, HttpStatus.UNAUTHORIZED);
   }
 }
+
+export class NotAMemberException extends HttpException {
+  constructor() {
+    super("Not a Member. Join!", HttpStatus.UNAUTHORIZED);
+  }
+}
