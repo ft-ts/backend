@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class AtGuard implements CanActivate {
@@ -16,10 +17,6 @@ export class AtGuard implements CanActivate {
         ? context.switchToHttp().getRequest().headers?.authorization?.split('Bearer ')[1]
         : context.switchToWs().getClient().handshake?.auth.token;
 
-    console.log('❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎');
-    console.log(context.getType(), token);
-    console.log('❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎');
-
     if (!token) {
       Logger.debug('[AtGuard] No token. redirected to /login');
       if (context.getType() === 'ws')
@@ -29,20 +26,20 @@ export class AtGuard implements CanActivate {
       throw new UnauthorizedException('No token');
     }
 
-    const userToken = await this.authService.validateAccessToken(token);
-    const userInfo = await this.authService.getUserInfo(userToken.uid);
-    userToken._check_2fa = false;
+    const userToken: UserToken = await this.authService.validateAccessToken(token);
+    const userInfo: User = await this.authService.getUserInfo(userToken.uid);
 
-    if (!userToken) {
+    if (!userToken)
       throw new UnauthorizedException('Invalid token');
-    }
 
     // 유저 2fa 설정과 발급된 토큰 설정이 같은가?
-    // 아니면 2fa 검사하도록 리다이렉트 해야함
     if (userInfo.twoFactorAuth !== userToken.twoFactorAuth) {
-      userToken._check_2fa = true;
-      // const response = context.switchToHttp().getResponse();
-      // response.redirect('http://localhost:3000/login/2fa', 302);
+
+      // 유저의 2fa가 켜져있고, 2faFreeUrl에 해당하지 않는 url로 접근했을 때 리다이렉트
+      if (userInfo.twoFactorAuth && _2faFreeUrl.indexOf(context.switchToHttp().getRequest().url) === -1) {
+        Logger.debug('[AtGuard] 2fa not checked. redirected to "/login/2fa"');
+        context.switchToHttp().getResponse().status(200).json({ redirectUrl: '/login/2fa' });
+      }
     }
 
     if (context.getType() === 'http') {
@@ -55,4 +52,17 @@ export class AtGuard implements CanActivate {
 
     return true;
   }
+}
+
+
+const _2faFreeUrl = [
+  '/api/login/2fa',
+];
+
+interface UserToken {
+  uid: number,
+  email: string,
+  twoFactorAuth: boolean,
+  iat: Date,
+  exp: Date
 }

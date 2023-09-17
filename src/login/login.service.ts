@@ -28,7 +28,6 @@ export class LoginService {
     ]);
 
     return {
-      message: 'Login Success',
       accessToken: tokens[0],
       refreshToken: tokens[1],
     };
@@ -175,7 +174,6 @@ export class LoginService {
     ]);
 
     return {
-      message: 'Login Success (Demo)',
       accessToken: tokens[0],
       refreshToken: tokens[1],
     };
