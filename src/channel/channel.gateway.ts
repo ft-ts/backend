@@ -42,7 +42,7 @@ export class ChannelGateway {
       for (const channel of userChannels) {
         await client.leave(`channel/channel-${channel.id}`);
       }
-      console.log('handleDisconnect: leave channel', userChannels);
+      // console.log('handleDisconnect: leave channel', userChannels);
   }
 
   /* ======= */
