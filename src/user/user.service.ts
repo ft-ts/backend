@@ -21,16 +21,20 @@ export class UserService {
     private readonly blockRepository: Repository<Block>,
   ) { }
 
-  async updateUser(user: User, body) {
+  async updateUser(user: User, body: Partial<User>) {
+
     if (body.uid || body.email)
       throw new BadRequestException('Cannot change uid or email');
 
     // email, avatar, status 유효성 검사
-    if (body.name.length < 4 || body.name.length > 20)
-      throw new BadRequestException('Name must be between 4 and 20 characters');
 
-    await this.usersRepository.update(user.id, body);
-    return await this.usersRepository.findOneBy({ id: user.id });
+    if (body.name) {
+      if (body.name.length < 4 || body.name.length > 20)
+        throw new BadRequestException('Name must be between 4 and 20 characters');
+    }
+
+    await this.usersRepository.update({uid: user.uid}, body);
+    return await this.usersRepository.findOneBy({ uid: user.uid });
   }
 
   async findAll() {
@@ -50,12 +54,12 @@ export class UserService {
 
   async findFriends(user: User) {
     const friends = await this.friendshipRepository
-    .createQueryBuilder('friendship')
-    .leftJoinAndSelect('friendship.user', 'user')
-    .leftJoinAndSelect('friendship.friend', 'friend')
-    .where('user.uid = :uid', { uid: user.uid, })
-    .select(['friendship.id', 'user.name', 'user.uid', 'friend'])
-    .getMany();
+      .createQueryBuilder('friendship')
+      .leftJoinAndSelect('friendship.user', 'user')
+      .leftJoinAndSelect('friendship.friend', 'friend')
+      .where('user.uid = :uid', { uid: user.uid, })
+      .select(['friendship.id', 'user.name', 'user.uid', 'friend'])
+      .getMany();
 
     return friends.map((friendship) => friendship.friend);
   }
@@ -97,7 +101,7 @@ export class UserService {
         friendId: user2.id,
       })
       .getOne();
-    if (existingFriendship) { 
+    if (existingFriendship) {
       throw new BadRequestException('The friendship already exists');
     }
 

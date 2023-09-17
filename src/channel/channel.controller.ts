@@ -7,9 +7,11 @@ import { Channel } from './entities/channel.entity';
 import { InvalidPasswordException, NotAuthorizedException, NotFoundException }
   from 'src/common/exceptions/chat.exception';
 import { ChannelPasswordDto } from './dto/channel-password.dto';
+import { AtGuard } from 'src/auth/auth.guard';
 
 
 @Controller('channels')
+@UseGuards(AtGuard)
 export class ChannelController {
   constructor(private readonly channelService: ChannelService) {}
 

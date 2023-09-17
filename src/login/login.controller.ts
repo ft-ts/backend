@@ -9,22 +9,22 @@ import { RtGuard } from 'src/auth/rt.guard';
 
 @Controller('login')
 export class LoginController {
-  constructor(private readonly loginService: LoginService) {}
+  constructor(private readonly loginService: LoginService) { }
 
   @Get('/')
   @UseGuards(AuthGuard('42'))
   login() {
-    return ;
+    return;
   }
 
   @Get('/redirect')
   @UseGuards(AuthGuard('42'))
   async redirect(@GetUser() user: User, @Res() res: Response) {
-    const { accessToken, refreshToken } = await this.loginService.validateUser(user);
-    res.cookie('accessToken', accessToken);
-    res.cookie('refreshToken', refreshToken);
+    const { tokens, redirectUrl } = await this.loginService.validateUser(user);
+    res.cookie('accessToken', tokens.accessToken, { sameSite: 'strict' }); // sameSite : 동일한 출처만 허용 (port, protocol, host가 같아야함)
+    res.cookie('refreshToken', tokens.refreshToken, { sameSite: 'strict' });
     res.header('Cache-Control', 'no-store');
-    res.status(200).redirect(`http://localhost:3000/main`);
+    res.status(302).redirect(`http://localhost:3000${redirectUrl}`);
   }
 
   @Get('/logout')
@@ -41,10 +41,8 @@ export class LoginController {
     );
     res.cookie('accessToken', accessToken);
     res.cookie('refreshToken', refreshToken);
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
     res.header('Cache-Control', 'no-store');
-   
+
     res.status(200).redirect(`http://localhost:3000/main`);
   }
 
@@ -56,8 +54,17 @@ export class LoginController {
 
   @Post('/2fa')
   @UseGuards(AtGuard)
-  async validate2FA(@GetUser() user: User, @Body() body) {
-    return await this.loginService.validate2FA(user, body.code);
+  async validate2FA(@GetUser() user: User, @Body() body, @Res() res: Response) {
+    const tokens = await this.loginService.validate2FA(user, body.code);
+    if (tokens) {
+      res.cookie('accessToken', tokens.accessToken);
+      res.cookie('refreshToken', tokens.refreshToken);
+      res.header('Cache-Control', 'no-store');
+      res.status(200).json({ success: true, message: 'Login Success' });
+    }
+    else {
+      res.status(200).json({ success: false, message: 'Invalid Code' });
+    }
   }
 
   @Post('/addDemoUser')
