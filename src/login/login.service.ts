@@ -64,7 +64,7 @@ export class LoginService {
       });
 
       await this.loginRepository.save(newUser);
-      const tokens: Tokens = await this.getTokens({ uid: existUser.uid, email: existUser.email, twoFactorAuth: false });
+      const tokens: Tokens = await this.getTokens({ uid: newUser.uid, email: newUser.email, twoFactorAuth: false });
       await this.updateRefreshToken(newUser, tokens.refreshToken);
 
       return {tokens, redirectUrl: '/main'};
