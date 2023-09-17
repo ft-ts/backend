@@ -31,9 +31,7 @@ export class ChannelGateway {
 
     for (const channel of userChannels) {
       await client.join(`channel/channel-${channel.id}`);
-      // console.log('handleConnect: join channel', channel.id);
     }
-    // console.log('handleConnect: join channel', userChannels);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -42,7 +40,6 @@ export class ChannelGateway {
       for (const channel of userChannels) {
         await client.leave(`channel/channel-${channel.id}`);
       }
-      console.log('handleDisconnect: leave channel', userChannels);
   }
 
   /* ======= */
@@ -166,7 +163,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   async grantAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
-    await this.channelService.grantAdmin(user, payload.channelId , targetUser.id);
+    await this.channelService.grantAdmin(user, payload.channelId , targetUser.uid);
     this.server.to(`channel/channel-${payload.channelId}`).emit('channel/updateMemberRole', { channelId: payload.channelId, targetUser: targetUser.name });
   }
   

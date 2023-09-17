@@ -420,10 +420,7 @@ export class ChannelService {
   async inviteUserToChannel(user: User, channel: Channel, targetUser: User): Promise<void> {
     const isFull = await this.getMemberCnt(await this.getChannelById(channel.id)) > 4;
     const targetChannelUser = await this.getChannelUser(targetUser.uid, channel.id);
-    if (channel.mode === ChannelMode.PRIVATE) {
-      throw new NotAuthorizedException('Channel is private');
-    }
-    else if (isFull) {
+    if (isFull) {
       throw new NotAuthorizedException('Channel is full');
     }
     else if (!targetChannelUser) {
