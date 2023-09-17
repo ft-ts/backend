@@ -111,17 +111,7 @@ export class UserService {
     });
     await this.friendshipRepository.save(friendship);
 
-    const friendships = await this.friendshipRepository
-      .createQueryBuilder('friendship')
-      .leftJoinAndSelect('friendship.user', 'user')
-      .leftJoinAndSelect('friendship.friend', 'friend')
-      .where('friendship.user = :userId AND friendship.friend = :friendId', {
-        userId: user.id,
-        friendId: user2.id,
-      })
-      .select(['friendship.id', 'user.name', 'friend.name'])
-      .getMany();
-
+    const friendships = await this.findFriends(user);
     return friendships;
   }
 
