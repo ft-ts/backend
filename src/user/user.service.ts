@@ -10,6 +10,7 @@ import { UserRepository } from './repositories/user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { Block } from './entities/block.entity';
+import { DuplicateUserNameException } from '../common/exceptions/profile.exception'
 
 @Injectable()
 export class UserService {
@@ -21,16 +22,34 @@ export class UserService {
     private readonly blockRepository: Repository<Block>,
   ) { }
 
+ 
+  async doesUsernameExist(newName: string): Promise<boolean> {
+    const user = await this.usersRepository.findOne({ where: { name: newName } });
+    return !!user;
+}
+
   async updateUser(user: User, body) {
+
     if (body.uid || body.email)
       throw new BadRequestException('Cannot change uid or email');
 
     // email, avatar, status 유효성 검사
-    if (body.name.length < 4 || body.name.length > 20)
-      throw new BadRequestException('Name must be between 4 and 20 characters');
+    if (body.name){
+        if (body.name.length < 4 || body.name.length > 20)
+            throw new BadRequestException('Name must be between 4 and 20 characters');
+            if (await this.doesUsernameExist(body.name)){
+                throw new DuplicateUserNameException("Nickname already exists"); 
+            }
+    }
 
-    await this.usersRepository.update(user.id, body);
-    return await this.usersRepository.findOneBy({ id: user.id });
+    await this.usersRepository.update({uid: user.uid}, body);
+    const newUser = await this.usersRepository.findOne({ where: { uid: user.uid}})
+    if (newUser.twoFactorAuth == false){
+        console.log("false?", newUser.twoFactorAuth)
+    }else{
+        console.log("true?", newUser.twoFactorAuth)
+    }
+    return await this.usersRepository.findOneBy({ uid: user.uid });
   }
 
   async findAll() {
@@ -246,4 +265,19 @@ export class UserService {
       return true;
     return false;
   }
+
+
+async editProfile(userId: number, nickName: string, newAvatar: string){
+        if (await this.doesUsernameExist(nickName)){
+            throw new DuplicateUserNameException("Nickname already exists"); 
+        }
+        const user = await this.usersRepository.findOne({ where: { uid: userId } });
+        if (!user) {
+            throw new Error("User not found");
+        }
+        user.name = nickName;
+        user.avatar = newAvatar;
+        await this.usersRepository.save(user); 
+    }
+
 }
