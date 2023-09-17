@@ -1,5 +1,5 @@
 import { Injectable, Body } from '@nestjs/common';
-import { Not, Repository } from 'typeorm';
+import { MoreThan, Not, Repository } from 'typeorm';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import * as bcrypt from 'bcrypt';
 import { ChannelMode } from './enum/channelMode.enum';
@@ -177,9 +177,7 @@ export class ChannelService {
         throw new InvalidPasswordException();
       }
       else
-      {
         await this.joinChannel(user, channel);
-      }
     }
     else if (!existingUser) {
       await this.joinChannel(user, channel);
@@ -211,13 +209,14 @@ export class ChannelService {
       if (channelUserToDelete.role === ChannelRole.OWNER) {
         await this.changeOwner(channel.id);
       }
-      await this.channelUserRepository.delete(channelUserToDelete.id);
-    }
-    channel.memberCnt = await this.getMemberCnt(channel);
-    await this.channelRepository.save(channel);
-    if (await this.getMemberCnt(channel) === 0) {
-      await this.cmRepository.delete({ channel: { id: channel.id } });
-      await this.channelRepository.remove(channel);
+      await this.channelUserRepository.remove(channelUserToDelete);
+      await this.userRepository.save(user);
+      channel.memberCnt = await this.getMemberCnt(channel);
+      await this.channelRepository.save(channel);
+      if (await this.getMemberCnt(channel) === 0) {
+        await this.cmRepository.delete({ channel: { id: channel.id } });
+        await this.channelRepository.remove(channel);
+      }
     }
   }
 
@@ -461,9 +460,16 @@ export class ChannelService {
     return message;
   }
 
-  async getChannelMessages(channel: Channel): Promise<Cm[]> {
+
+  async getChannelMessages(user: User, channel: Channel): Promise<Cm[]> {
+    const channelUser = await this.channelUserRepository.findOne({
+      where: { user: { uid: user.uid }, channel: { id: channel.id } },
+    });
     const messages = await this.cmRepository.find({
-      where: { channel: { id: channel.id} },
+      where: {
+        channel: { id: channel.id },
+        timeStamp: MoreThan(channelUser.joined_at), // joined_at 이후의 메시지만 가져옴
+      },
       order: { timeStamp: 'ASC' },
     });
     return messages;

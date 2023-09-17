@@ -65,14 +65,12 @@ export class ChannelGateway {
   try {
     await this.channelService.enterChannel(user, payload.chId, payload.password);
   } catch (error) {
-    if (error instanceof NotFoundException) {
-      client.emit('channel/error', { message: 'Channel not found' });
-    } else if (error instanceof NotAuthorizedException) {
+    if (error instanceof NotAuthorizedException) {
       client.emit('channel/error', { message: error.message });
     } else if (error instanceof InvalidPasswordException) {
       client.emit('channel/error', { message: error.message });
     } else {
-      client.emit('channel/error', { message: 'Failed to enter channel' });
+      client.emit('channel/error', { message: error.message });
     }
   }
   const channel = await this.channelService.getChannelById(payload.chId);
@@ -80,6 +78,7 @@ export class ChannelGateway {
   await this.server.to(`channel/channel-${payload.chId}`).emit('channel/userJoined', { chId: payload.chId, user: user.name });
   await this.server.to(`channel/channel-${payload.chId}`).emit('channel/channelUpdate', channel);
 }
+
 @SubscribeMessage('channel/leaveChannel')
 async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
@@ -248,8 +247,9 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
 
   @SubscribeMessage('channel/getChannelMessages')
   async getChannelMessages(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+    const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
-    const messages = await this.channelService.getChannelMessages(channel);
+    const messages = await this.channelService.getChannelMessages(user, channel);
     await client.emit('channel/getChannelMessages', messages);
   }
 
