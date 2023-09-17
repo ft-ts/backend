@@ -1,7 +1,7 @@
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-let envFilePath = '.env.local';
+const envFilePath = '.env.local';
 
 ConfigModule.forRoot({ envFilePath });
 

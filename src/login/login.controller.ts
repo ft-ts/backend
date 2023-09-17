@@ -24,7 +24,7 @@ export class LoginController {
     res.cookie('accessToken', tokens.accessToken, { sameSite: 'strict' }); // sameSite : 동일한 출처만 허용 (port, protocol, host가 같아야함)
     res.cookie('refreshToken', tokens.refreshToken, { sameSite: 'strict' });
     res.header('Cache-Control', 'no-store');
-    res.status(302).redirect(`${process.env.SERVER_URL}:${process.env.FRONT_PORT}${redirectUrl}`);
+    res.status(302).redirect(`http://${process.env.SERVER_IP}:${process.env.FRONT_PORT}/${redirectUrl}`);
   }
 
   @Get('/logout')
@@ -43,7 +43,7 @@ export class LoginController {
     res.cookie('refreshToken', refreshToken);
     res.header('Cache-Control', 'no-store');
 
-    res.status(200).redirect(`${process.env.SERVER_URL}:${process.env.FRONT_PORT}/main`);
+    res.status(200).redirect(`http://${process.env.SERVER_IP}:${process.env.FRONT_PORT}/main`);
   }
 
   @Get('/2fa')
