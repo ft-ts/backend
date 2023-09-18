@@ -21,32 +21,16 @@ export class DmGateway {
   @WebSocketServer()
   server: Server;
 
-  // async handleConnection(client: Socket) {
-  //   if (!(await this.authService.validateSocket(client))) {
-  //     client.disconnect();
-  //     return;
-  //   }
-  //   console.log('# dm/handleConnection', client.data);
-  //   // await client.join(`dm-${client.data.uid}`);
-  //   Logger.debug(`[DmGateway] ${client.data.uid} joined 'dm-${client.data.uid}'`);
-  //   this.checkRequests(client);
-  // }
-
-  // async handleDisconnect(client: Socket) {
-  //   Logger.debug(`[DmGateway] ${client.data.uid} disconnected`);
-  //   // this.authService.handleUserStatus(client.data.uid, false);
-  // }
-
   @UseGuards(CheckBlocked)
   @SubscribeMessage('dm/msg')
   async sendDM(client: Socket, payload: any) {
     payload.senderUid = client.data.uid;
 
-    await this.dmService.saveDmLog(payload);
+    const dm = await this.dmService.saveDmLog(payload);
     await client.join(`dm-${payload.targetUid}`);
     this.server
       .to(`dm-${payload.targetUid}`)
-      .emit('dm/msg', payload);
+      .emit('dm/msg', dm);
     await client.leave(`dm-${payload.targetUid}`);
   }
 

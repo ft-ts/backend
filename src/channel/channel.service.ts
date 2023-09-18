@@ -425,6 +425,7 @@ export class ChannelService {
   async inviteUserToChannel(user: User, channel: Channel, targetUser: User): Promise<void> {
     const isFull = await this.getMemberCnt(await this.getChannelById(channel.id)) > 4;
     const targetChannelUser : ChannelUser | null = await this.getChannelUser(targetUser.uid, channel.id);
+
     if (isFull) {
       throw new NotAuthorizedException('Channel is full');
     }

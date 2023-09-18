@@ -31,9 +31,7 @@ export class ChannelGateway {
 
     for (const channel of userChannels) {
       await client.join(`channel/channel-${channel.id}`);
-      // console.log('handleConnect: join channel', channel.id);
     }
-    // console.log('handleConnect: join channel', userChannels);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -42,7 +40,6 @@ export class ChannelGateway {
       for (const channel of userChannels) {
         await client.leave(`channel/channel-${channel.id}`);
       }
-      console.log('handleDisconnect: leave channel', userChannels);
   }
 
   /* ======= */
