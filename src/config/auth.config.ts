@@ -1,13 +1,7 @@
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-let envFilePath = '.env.development';
-
-if (process.env.ENVIRONMENT === 'PRODUCTION') {
-  envFilePath = '.env.production';
-} else if (process.env.ENVIRONMENT === 'TEST') {
-  envFilePath = '.env.test';
-}
+const envFilePath = '.env.local';
 
 ConfigModule.forRoot({ envFilePath });
 

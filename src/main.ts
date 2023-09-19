@@ -11,7 +11,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.SERVER_PORT;
+  const port = process.env.BACK_PORT;
   await app.listen(port);
 
   Logger.debug(`App running on port ${port}`);
