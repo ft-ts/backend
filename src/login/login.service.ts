@@ -19,6 +19,7 @@ export class LoginService {
   }
 
   async getTokens({ uid, email, twoFactorAuth }): Promise<Tokens> {
+    Logger.debug('# AuthService getTokens');
     const tokens = await Promise.all([
       this.jwtService.signAsync({ uid, email, twoFactorAuth }),
       this.jwtService.signAsync(
@@ -26,7 +27,6 @@ export class LoginService {
         { secret: process.env.RT_SECRET, expiresIn: process.env.RT_EXPIRESIN },
       ),
     ]);
-
     return {
       accessToken: tokens[0],
       refreshToken: tokens[1],
@@ -54,7 +54,7 @@ export class LoginService {
 
       // 새 유저
       Logger.warn('# User Not Found! Creating New User...');
-
+      
       const newUser: User = this.loginRepository.create({
         uid: userInfo.uid,
         name: userInfo.name,
@@ -62,11 +62,9 @@ export class LoginService {
         avatar: userInfo.avatar,
         qrSecret: authenticator.generateSecret(),
       });
-
       await this.loginRepository.save(newUser);
       const tokens: Tokens = await this.getTokens({ uid: newUser.uid, email: newUser.email, twoFactorAuth: false });
       await this.updateRefreshToken(newUser, tokens.refreshToken);
-
       return {tokens, redirectUrl: '/main'};
 
     } catch (error) {

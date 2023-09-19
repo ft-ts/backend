@@ -1,5 +1,5 @@
 import { Injectable, Body } from '@nestjs/common';
-import { Not, Repository } from 'typeorm';
+import { MoreThan, Not, Repository } from 'typeorm';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import * as bcrypt from 'bcrypt';
 import { ChannelMode } from './enum/channelMode.enum';
@@ -13,6 +13,7 @@ import { Cm } from './entities/cm.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { ChannelUser } from './entities/channelUser.entity';
 import { ChannelPasswordDto } from './dto/channel-password.dto';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class ChannelService {
@@ -177,9 +178,7 @@ export class ChannelService {
         throw new InvalidPasswordException();
       }
       else
-      {
         await this.joinChannel(user, channel);
-      }
     }
     else if (!existingUser) {
       await this.joinChannel(user, channel);
@@ -211,13 +210,14 @@ export class ChannelService {
       if (channelUserToDelete.role === ChannelRole.OWNER) {
         await this.changeOwner(channel.id);
       }
-      await this.channelUserRepository.delete(channelUserToDelete.id);
-    }
-    channel.memberCnt = await this.getMemberCnt(channel);
-    await this.channelRepository.save(channel);
-    if (await this.getMemberCnt(channel) === 0) {
-      await this.cmRepository.delete({ channel: { id: channel.id } });
-      await this.channelRepository.remove(channel);
+      await this.channelUserRepository.remove(channelUserToDelete);
+      await this.userRepository.save(user);
+      channel.memberCnt = await this.getMemberCnt(channel);
+      await this.channelRepository.save(channel);
+      if (await this.getMemberCnt(channel) === 0) {
+        await this.cmRepository.delete({ channel: { id: channel.id } });
+        await this.channelRepository.remove(channel);
+      }
     }
   }
 
@@ -233,6 +233,9 @@ export class ChannelService {
       where: { user: { uid: user.uid } },
       relations: ['channel'],
       order: { id: 'DESC' },
+    }).catch((err) => {
+      console.log(err);
+      return err;
     });
     const channels = channelUsers.map((channelUser) => channelUser.channel);
     return channels;
@@ -309,10 +312,14 @@ export class ChannelService {
     return sortedMembers;
   }
 
-  async getChannelUser(uid: number, channelId: number): Promise<ChannelUser> {
-    return await this.channelUserRepository.findOne({
+  async getChannelUser(uid: number, channelId: number): Promise<ChannelUser | null> {
+    const channelUser = await this.channelUserRepository.findOne({
       where: { user: { uid: uid }, channel: { id: channelId } },
+    }).catch((err) => {
+      Logger.error(err);
+      return err;
     });
+    return channelUser;
   }
 
 
@@ -417,22 +424,20 @@ export class ChannelService {
 
   async inviteUserToChannel(user: User, channel: Channel, targetUser: User): Promise<void> {
     const isFull = await this.getMemberCnt(await this.getChannelById(channel.id)) > 4;
-    const targetChannelUser = await this.getChannelUser(targetUser.uid, channel.id);
-    if (channel.mode === ChannelMode.PRIVATE) {
-      throw new NotAuthorizedException('Channel is private');
-    }
-    else if (isFull) {
+    const targetChannelUser : ChannelUser | null = await this.getChannelUser(targetUser.uid, channel.id);
+
+    if (isFull) {
       throw new NotAuthorizedException('Channel is full');
     }
-    else if (!targetChannelUser) {
-      await this.joinChannel(targetUser, await this.getChannelById(channel.id));
+    else if (targetChannelUser) {
+      throw new NotAuthorizedException('User is already a member of the channel');
     }
     else if (await this.isBannedUser(targetUser, channel)) {
       throw new NotAuthorizedException('User is banned from the channel');
     }
     else
     {
-      throw new NotAuthorizedException('User is already a member of the channel');
+      await this.joinChannel(targetUser, await this.getChannelById(channel.id));
     }
   }
 
@@ -461,9 +466,16 @@ export class ChannelService {
     return message;
   }
 
-  async getChannelMessages(channel: Channel): Promise<Cm[]> {
+
+  async getChannelMessages(user: User, channel: Channel): Promise<Cm[]> {
+    const channelUser = await this.channelUserRepository.findOne({
+      where: { user: { uid: user.uid }, channel: { id: channel.id } },
+    });
     const messages = await this.cmRepository.find({
-      where: { channel: { id: channel.id} },
+      where: {
+        channel: { id: channel.id },
+        timeStamp: MoreThan(channelUser.joined_at), // joined_at 이후의 메시지만 가져옴
+      },
       order: { timeStamp: 'ASC' },
     });
     return messages;

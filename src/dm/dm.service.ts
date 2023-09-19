@@ -12,7 +12,6 @@ export class DmService {
   ) { }
 
   async saveDmLog(payload: any) {
-    console.log('dm/saveDmLog', payload);
     const dm = await this.dmRepository.createNewDm(payload);
     return await this.dmRepository.save(dm);
   }

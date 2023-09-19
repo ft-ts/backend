@@ -31,9 +31,7 @@ export class ChannelGateway {
 
     for (const channel of userChannels) {
       await client.join(`channel/channel-${channel.id}`);
-      // console.log('handleConnect: join channel', channel.id);
     }
-    // console.log('handleConnect: join channel', userChannels);
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -42,7 +40,6 @@ export class ChannelGateway {
       for (const channel of userChannels) {
         await client.leave(`channel/channel-${channel.id}`);
       }
-      // console.log('handleDisconnect: leave channel', userChannels);
   }
 
   /* ======= */
@@ -65,21 +62,21 @@ export class ChannelGateway {
   try {
     await this.channelService.enterChannel(user, payload.chId, payload.password);
   } catch (error) {
-    if (error instanceof NotFoundException) {
-      client.emit('channel/error', { message: 'Channel not found' });
-    } else if (error instanceof NotAuthorizedException) {
+    if (error instanceof NotAuthorizedException) {
       client.emit('channel/error', { message: error.message });
     } else if (error instanceof InvalidPasswordException) {
       client.emit('channel/error', { message: error.message });
     } else {
-      client.emit('channel/error', { message: 'Failed to enter channel' });
+      client.emit('channel/error', { message: error.message });
     }
+    return ;
   }
   const channel = await this.channelService.getChannelById(payload.chId);
   await client.join(`channel/channel-${payload.chId}`);
   await this.server.to(`channel/channel-${payload.chId}`).emit('channel/userJoined', { chId: payload.chId, user: user.name });
   await this.server.to(`channel/channel-${payload.chId}`).emit('channel/channelUpdate', channel);
 }
+
 @SubscribeMessage('channel/leaveChannel')
 async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
@@ -164,15 +161,15 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
 
   @SubscribeMessage('channel/grantAdmin')
-  async grantAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async grantAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
-    await this.channelService.grantAdmin(user, payload.channelId , targetUser.id);
+    await this.channelService.grantAdmin(user, payload.channelId , targetUser.uid);
     this.server.to(`channel/channel-${payload.channelId}`).emit('channel/updateMemberRole', { channelId: payload.channelId, targetUser: targetUser.name });
   }
   
   @SubscribeMessage('channel/revokeAdmin')
-  async revokeAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async revokeAdmin(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
     await this.channelService.revokeAdmin(user, payload.channelId , targetUser.id);
@@ -180,7 +177,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
   
   @SubscribeMessage('channel/muteMember')
-  async muteMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async muteMember(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
     await this.channelService.muteMember(user, payload.channelId , targetUser.uid);
@@ -188,7 +185,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
   
   @SubscribeMessage('channel/banMember')
-  async banMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async banMember(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUserUid);
     await this.channelService.banMember(user, payload.channelId , targetUser);
@@ -209,7 +206,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
   
   @SubscribeMessage('channel/kickMember')
-  async kickMember(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async kickMember(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUserUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUserSocket = await this.socketService.getSocket(payload.targetUserUid);
     if (!!targetUserSocket) {
@@ -222,7 +219,7 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
   }
   
   @SubscribeMessage('channel/inviteUserToChannel')
-  async inviteUserToChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+  async inviteUserToChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUid: number, channelId: number}) {
     const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const targetUser = await this.channelService.getUserByUid(payload.targetUid);
     const channel = await this.channelService.getChannelById(payload.channelId);
@@ -248,8 +245,9 @@ async leaveChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: an
 
   @SubscribeMessage('channel/getChannelMessages')
   async getChannelMessages(@ConnectedSocket() client: Socket, @MessageBody() payload: any) {
+    const user = await this.channelService.getAuthenticatedUser(client.data.uid);
     const channel = await this.channelService.getChannelById(payload.channelId);
-    const messages = await this.channelService.getChannelMessages(channel);
+    const messages = await this.channelService.getChannelMessages(user, channel);
     await client.emit('channel/getChannelMessages', messages);
   }
 

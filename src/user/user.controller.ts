@@ -53,7 +53,7 @@ export class UserController {
 
   @Post('friends')
   async createFriendship(@GetUser() user: User, @Body() body) {
-    const { targetUid } = body;
+    const { targetUid } = body.data;
     const res = await this.usersService.createFriendship(user, targetUid).catch((err) => {
       return err;
     });
