@@ -78,15 +78,17 @@ export class UserController {
   }
 
   @Post('block')
-  createBlocked(@GetUser() user: User, @Body() body) {
-    const { targetUid } = body;
-    return this.usersService.createBlocked(user, targetUid);
+  async createBlocked(@GetUser() user: User, @Body() body) {
+    const { targetUid } = body.data;
+    const res = await this.usersService.createBlocked(user, targetUid);
+    return res;
   }
 
   @Delete('block')
-  deleteBlocked(@GetUser() user: User, @Body() body) {
+  async deleteBlocked(@GetUser() user: User, @Body() body) {
     const { targetUid } = body;
-    return this.usersService.deleteBlocked(user, targetUid);
+    const res = await this.usersService.deleteBlocked(user, targetUid);
+    return res;
   }
 
   @Get(':id') // 맨 아래 있어야 함
