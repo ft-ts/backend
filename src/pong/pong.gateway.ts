@@ -67,8 +67,6 @@ implements OnGatewayConnection ,OnGatewayDisconnect
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: {uid: number},
   ){
-    console.log('invite', payload);
-    
     const opponent: Socket | null = await this.socketService.getSocket(payload.uid);
     if (opponent === null){
       Logger.debug(`[PongGateway inviteMatch] ${payload.uid} is not connected`);
