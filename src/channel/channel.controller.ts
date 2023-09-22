@@ -11,12 +11,13 @@ import { ChannelPasswordDto } from './dto/channel-password.dto';
 import { AtGuard } from 'src/auth/auth.guard';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { ChannelMode } from './enum/channelMode.enum';
-
+import { SocketService } from 'src/common/service/socket.service';
 
 @Controller('channels')
 @UseGuards(AtGuard)
 export class ChannelController {
-  constructor(private readonly channelService: ChannelService) {}
+  constructor(private readonly channelService: ChannelService,
+    private readonly socketService: SocketService) {}
 
   @Post('create')
   async createChannel(
@@ -108,16 +109,11 @@ export class ChannelController {
     @GetUser() user : User,
     @Body() payload: {channelId: number, targetUid: number}
   ){
+  
     const res = await this.channelService.kickMember(user, payload)
-    return res;
-  }
 
-  @Post('/invite')
-  async inviteMember(
-    @GetUser() user : User,
-    @Body() payload: {channelId: number, targetUid: number}
-  ){
-    const res = await this.channelService.inviteMember(user, payload)
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
+    await targetUserSocket.leave(`channel/channel-${payload.channelId}`);
     return res;
   }
 
@@ -126,8 +122,8 @@ export class ChannelController {
     @GetUser() user : User,
     @Body() payload: {channelId: number, targetUid: number}
   ){
-    const res = await this.channelService.muteMember(user, payload)
-    return res;
+    const res = this.channelService.muteMember(user, payload);
+    return res; 
   }
 
   @Post('/grant/admin')

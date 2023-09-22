@@ -350,8 +350,8 @@ export class ChannelService {
 
   async muteMember(user: User, payload: { channelId: number, targetUid: number}): Promise<void> {
     const channelAdmin = await this.getChannelUser(user.uid, payload.channelId);
-    const targetUSer = await this.getChannelUser(payload.targetUid, payload.channelId);
-    if (!channelAdmin || !targetUSer) {
+    const targetUser = await this.getChannelUser(payload.targetUid, payload.channelId);
+    if (!channelAdmin || !targetUser) {
       throw new NotFoundException('User not found');
     }
     if (channelAdmin.role === ChannelRole.NORMAL) {
@@ -411,31 +411,37 @@ export class ChannelService {
 
   async kickMember(user: User, payload : { channelId: number, targetUid: number}): Promise<void> {
     const channelOwner = await this.getChannelUser(user.uid, payload.channelId);
-    const targetUser = await this.getChannelUser(payload.targetUid, payload.channelId).catch((err) => {
+    const targetChannelUser = await this.getChannelUser(payload.targetUid, payload.channelId)
+    if (!channelOwner || !targetChannelUser) {
       throw new NotFoundException('User not found');
-    });
-    if (channelOwner.role === ChannelRole.NORMAL) {
+    } else if (channelOwner.role === ChannelRole.NORMAL) {
       throw new NotAuthorizedException('User is not the owner of the channel');
     }
-    const targetChannelUser = await this.getChannelUser(targetUser.user.uid, payload.channelId);
-    await this.channelUserRepository.delete(targetChannelUser.id);
+    const targetUser = targetChannelUser.user;
+    const channel = await this.getChannelById(payload.channelId);
+    await this.channelUserRepository.remove(targetChannelUser);
+    await this.userRepository.save(targetUser);
+    channel.memberCnt = await this.getMemberCnt(channel);
+    await this.channelRepository.save(channel);
   }
 
-  async inviteMember(user: User, payload : { channelId: number, targetUid: number}): Promise<void> {
-    const channel : Channel | null = await this.getChannelById(payload.channelId);
+  async inviteMember(channelId: number, targetUid: number): Promise<void> {
+    const channel : Channel = await this.getChannelById(channelId);
     if (!channel){
       throw new NotFoundException('Channel not found');
     }
+    const targetUser : User | null = await this.getUserByUid(targetUid);
     const isFull : boolean = await this.getMemberCnt(channel) > 4;
-    const targetUser : ChannelUser | null = await this.getChannelUser(payload.targetUid, payload.channelId);
+    const isBanned : boolean = await this.isBannedUser(targetUser, channel);
+    const isMember : boolean = await this.isChannelMember(targetUser, channelId);
     if (isFull) {
       throw new NotAuthorizedException('Channel is full');
-    } else if (targetUser) {
+    } else if (isMember) {
       throw new NotAuthorizedException('User is already a member of the channel');
-    } else if (await this.isBannedUser(targetUser.user, channel)) {
+    } else if (isBanned) {
       throw new NotAuthorizedException('User is banned from the channel');
     }else{
-      await this.joinChannel(targetUser.user, await this.getChannelById(channel.id));
+      await this.joinChannel(targetUser, channel);
     }
   }
 

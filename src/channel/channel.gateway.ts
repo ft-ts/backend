@@ -52,6 +52,23 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     }
   }
 
+  @SubscribeMessage('channel/inviteUserToChannel')
+  async inviteUserToChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUid: number, channelId: number}) {
+    const channel: Channel = await this.channelService.getChannelById(payload.channelId);
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
+    console.log('inviteUserToChannel', channel)
+    try {
+      await this.channelService.inviteMember(payload.channelId, payload.targetUid);
+    } catch (error) {
+      await client.emit('channel/inviteUserToChannel/fail', { message: error.message });
+      return ;
+    }
+    if (!!targetUserSocket) {
+      await targetUserSocket.join(`channel/channel-${payload.channelId}`);
+      await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/invited', { channelTitle: channel.title, targetUserName: "test" });
+    }
+  }
+
   /* ======= */
   /* Channel */
   /* ======= */
