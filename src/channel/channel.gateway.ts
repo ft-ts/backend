@@ -1,8 +1,14 @@
-import { ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import {
+  ConnectedSocket,
+  MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { AuthService } from 'src/auth/auth.service';
 import { ChannelService } from './channel.service';
-import { CreateChannelDto } from './dto/create-channel.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { InvalidPasswordException, NotAMemberException, NotAuthorizedException, NotFoundException } from 'src/common/exceptions/chat.exception';
 import { SocketService } from 'src/common/service/socket.service';
@@ -10,6 +16,7 @@ import { User } from 'src/user/entities/user.entity';
 import { UseGuards } from '@nestjs/common';
 import { AtGuard } from 'src/auth/auth.guard';
 import { Channel } from './entities/channel.entity';
+
 @UseGuards(AtGuard)
 @WebSocketGateway({
   cors: {
@@ -17,7 +24,8 @@ import { Channel } from './entities/channel.entity';
   },
 })
 
-export class ChannelGateway {
+export class ChannelGateway 
+implements OnGatewayConnection, OnGatewayDisconnect{
   constructor(
     private readonly channelService: ChannelService,
     private readonly socketService: SocketService,
@@ -85,44 +93,6 @@ export class ChannelGateway {
     await this.server.emit('channel/channelUpdate', channel);
   }
 
-  @SubscribeMessage('channel/editTitle')
-  async editTitle(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any
-  ) {
-    const user: User | null = await this.channelService.getUserByUid(client.data.uid);
-    const channel: Channel | null = await this.channelService.getChannelById(payload.channelId);
-    if (!user || !channel) return ;
-    await this.channelService.editTitle(user, channel , payload.title);
-    await this.server.emit('channel/channelUpdate', channel);
-    console.log('editTitle', channel);
-  }
-
-  @SubscribeMessage('channel/editPassword')
-  async editPassword(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any
-  ) {
-    const user: User | null = await this.channelService.getUserByUid(client.data.uid);
-    const channel: Channel | null = await this.channelService.getChannelById(payload.channelId);
-    if (!user || !channel) return ;
-    await this.channelService.editPassword(user, channel , payload.password);
-    await this.server.emit('channel/editChannel', "password changed");
-    await client.emit('channel/channelUpdate', channel.password);
-  }
-
-  @SubscribeMessage('channel/editMode')
-  async editMode(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any
-  ) {
-    const user: User | null = await this.channelService.getUserByUid(client.data.uid);
-    const channel: Channel | null = await this.channelService.getChannelById(payload.channelId);
-    if (!user || !channel) return ;
-    await this.channelService.editMode(user, payload.channelId , payload.mode, payload.password);
-    await this.server.emit('channel/channelUpdate', channel.mode);
-  }
-  
   /* ==== */
   /* Chat */
   /* ==== */

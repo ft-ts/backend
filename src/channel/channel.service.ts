@@ -14,7 +14,6 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { ChannelUser } from './entities/channelUser.entity';
 import { ChannelPasswordDto } from './dto/channel-password.dto';
 import { Logger } from '@nestjs/common';
-import { log } from 'console';
 
 @Injectable()
 export class ChannelService {
@@ -87,14 +86,14 @@ export class ChannelService {
     return user;
   }
 
-  async getMemberCnt(channel: Channel): Promise<number> {
+  private async getMemberCnt(channel: Channel): Promise<number> {
     const channelUsers = await this.channelUserRepository.find({
       where: { channel: { id: channel.id } },
     });
     return channelUsers.length;
   }
 
-  async isBannedUser(user: User, channel: Channel): Promise<boolean> {
+  private async isBannedUser(user: User, channel: Channel): Promise<boolean> {
     if (!channel.banned_uid || channel.banned_uid.length === 0) {
       return false;
     }
@@ -102,7 +101,7 @@ export class ChannelService {
     return isBanned;
   }
 
-  async isMutedMember(user: User, channel: Channel): Promise<boolean> {
+  private async isMutedMember(user: User, channel: Channel): Promise<boolean> {
     if (!channel.muted_uid || channel.muted_uid.length === 0) {
       return false;
     }
@@ -247,51 +246,28 @@ export class ChannelService {
     return channels;
   }
 
-  async editTitle(user: User, channel: Channel, newTitle: string): Promise<Channel> {
-    const channelOwner = await this.getChannelUser(user.uid, channel.id);
-    if (channelOwner.role !== ChannelRole.OWNER) {
+  async updateChannel(
+    user: User,
+    payload: { channelId: number, title: string, password: string, mode: ChannelMode}
+  ): Promise<Channel> {
+    const owner = await this.getChannelUser(user.uid, payload.channelId);
+    const channel = await this.getChannelById(payload.channelId);
+    if (!owner || !channel) {
+      throw new NotFoundException('Can Not Found');
+    }else if (owner.role !== ChannelRole.OWNER) {
       throw new NotAuthorizedException('You are not the owner of the channel');
     }
-    channel.title = newTitle;
+    channel.title = payload.title;
+    channel.mode = payload.mode;
+    if (payload.mode === ChannelMode.PROTECTED) {
+      if (!payload.password) {
+        throw new MissingPasswordException();
+      }
+      channel.password = await this.setPassword(payload.password);
+    }
     await this.channelRepository.save(channel);
     return channel;
   }
-
-  async editPassword(user: User, channel: Channel, newPassword: string): Promise<Channel> {
-    const channelOwner = await this.getChannelUser(user.uid, channel.id);
-    if (channelOwner.role !== ChannelRole.OWNER) {
-      throw new NotAuthorizedException('You are not the owner of the channel');
-    }
-    if (channel.mode !== ChannelMode.PROTECTED) {
-      throw new NotAuthorizedException('Password is not used in PROTECTED mode');
-    }
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    channel.password = hashedPassword;
-    await this.channelRepository.save(channel);
-    return channel;
-  }
-
-  async editMode(user: User, channel: Channel, newMode: ChannelMode, password: string): Promise<Channel> {
-    const channelOwner = await this.getChannelUser(user.uid, channel.id);
-    if (channelOwner.role !== ChannelRole.OWNER) {
-      throw new NotAuthorizedException('You are not the owner of the channel');
-    }
-    if (newMode !== ChannelMode.PROTECTED) {
-      channel.password = null;
-    }
-    else if (!password) {
-      throw new MissingPasswordException();
-    }
-    else {
-      channel.password = password;
-    }
-    channel.mode = newMode;
-    await this.channelRepository.save(channel);
-    // channel 
-    return channel;
-  }
-
 
   /* ====== */
   /* Member */
@@ -305,14 +281,11 @@ export class ChannelService {
     if (!channelUsers) {
       throw new NotFoundException('No users found for the channel');
     }
-      // 역할 순서대로 정렬하는 비교 함수
     const roleOrder = {
       [ChannelRole.OWNER]: 1,
       [ChannelRole.ADMIN]: 2,
       [ChannelRole.NORMAL]: 3,
     };
-
-    // 역할을 기준으로 정렬
     const sortedMembers = channelUsers.sort((a, b) => {
       return roleOrder[a.role] - roleOrder[b.role];
     });
@@ -320,7 +293,7 @@ export class ChannelService {
   }
 
   /* null check */
-  async getChannelUser(uid: number, channelId: number): Promise<ChannelUser | null> {
+  private async getChannelUser(uid: number, channelId: number): Promise<ChannelUser | null> {
     const channelUser : ChannelUser | null = await this.channelUserRepository.findOne({
       where: { user: { uid: uid }, channel: { id: channelId } },
     }).then((res) => {
@@ -333,7 +306,7 @@ export class ChannelService {
   }
 
 
-  async changeOwner(channelId: number): Promise<void> {
+  private async changeOwner(channelId: number): Promise<void> {
     const members = await this.getChannelMembers(channelId);
     if (members[1]) {
       members[1].role = ChannelRole.OWNER;

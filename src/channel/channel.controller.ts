@@ -10,6 +10,7 @@ import { InvalidPasswordException, NotAuthorizedException, NotFoundException }
 import { ChannelPasswordDto } from './dto/channel-password.dto';
 import { AtGuard } from 'src/auth/auth.guard';
 import { CreateChannelDto } from './dto/create-channel.dto';
+import { ChannelMode } from './enum/channelMode.enum';
 
 
 @Controller('channels')
@@ -145,4 +146,13 @@ export class ChannelController {
   // }{
   //   const res = await this.channelService.revokeAdmin(user, payload);
   // }
+
+  @Post('/update')
+  async postChannelUpdate(
+    @GetUser() user : User,
+    @Body() payload: {channelId: number, title: string, password: string, mode: ChannelMode}
+  ) {
+    const res = await this.channelService.updateChannel(user, payload);
+    return res;
+  }
 }
