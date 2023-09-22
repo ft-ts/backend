@@ -56,7 +56,6 @@ implements OnGatewayConnection, OnGatewayDisconnect{
   async inviteUserToChannel(@ConnectedSocket() client: Socket, @MessageBody() payload: {targetUid: number, channelId: number}) {
     const channel: Channel = await this.channelService.getChannelById(payload.channelId);
     const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
-    console.log('inviteUserToChannel', channel)
     try {
       await this.channelService.inviteMember(payload.channelId, payload.targetUid);
     } catch (error) {
@@ -65,7 +64,8 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     }
     if (!!targetUserSocket) {
       await targetUserSocket.join(`channel/channel-${payload.channelId}`);
-      await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/invited', { channelTitle: channel.title, targetUserName: "test" });
+      this.server.emit('update/channelInfo');
+      this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
     }
   }
 
@@ -105,9 +105,9 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     const channel: Channel | null = await this.channelService.getChannelById(payload.channelId);
     if (!user || !channel) return ;
     await this.channelService.leaveChannel(user, channel);
-    await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/userLeft', { chId: channel.id, user: user.name });
     await client.leave(`channel/channel-${payload.channelId}`);
-    await this.server.emit('channel/channelUpdate', channel);
+    this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
+    this.server.emit('update/channelInfo');
   }
 
   /* ==== */
@@ -138,8 +138,24 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     @MessageBody() createMessageDto: CreateMessageDto,
   ) {
     const messages = await this.channelService.sendNotification(createMessageDto);
-    console.log('sendNotification', messages)
     await this.server.to(`channel/channel-${createMessageDto.channelId}`).emit('channel/sendMessage', messages);
+  }
+
+  @SubscribeMessage('channel/innerUpdate')
+  async channelInnerUpdate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: {channelId: number},
+  ) {
+    await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
+  }
+
+  @SubscribeMessage('channel/chatRoomUpdate')
+  async chatRoomUpdate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: {channelId: number},
+  ) {
+    const channel = await this.channelService.getChannelById(payload.channelId);
+    await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/chatRoomUpdate', channel);
   }
 }
 

@@ -195,7 +195,8 @@ export class ChannelService {
   }
 
   async  joinChannel(user: User, channel: Channel): Promise<ChannelUser> {
-    // is Exist? return 
+    // is Exist? return
+    
     const channelUser = await this.channelUserRepository.create({
       user: user,
       channel: channel,
@@ -294,8 +295,9 @@ export class ChannelService {
 
   /* null check */
   private async getChannelUser(uid: number, channelId: number): Promise<ChannelUser | null> {
-    const channelUser : ChannelUser | null = await this.channelUserRepository.findOne({
+    const channelUser: ChannelUser | null = await this.channelUserRepository.findOne({
       where: { user: { uid: uid }, channel: { id: channelId } },
+      relations: ['user', 'channel'],
     }).then((res) => {
       return res;
     }).catch((err) => {
@@ -381,9 +383,10 @@ export class ChannelService {
     const channel = await this.getChannelById(payload.channelId);
     const isBannedTarget = await this.isBannedUser(targetUser.user, channel);
     if (!isBannedTarget) {
-      await channel.banned_uid.push(targetUser.user.uid);
+      channel.banned_uid.push(targetUser.user.uid);
       const targetChannelUser = await this.getChannelUser(targetUser.user.uid, payload.channelId);
       await this.channelUserRepository.delete(targetChannelUser.id);
+      channel.memberCnt = await this.getMemberCnt(channel);
       await this.channelRepository.save(channel);
     }
     else {
