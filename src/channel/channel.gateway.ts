@@ -63,9 +63,11 @@ implements OnGatewayConnection, OnGatewayDisconnect{
       return ;
     }
     if (!!targetUserSocket) {
+      const targetUser: User = await this.channelService.getUserByUid(payload.targetUid);
       await targetUserSocket.join(`channel/channel-${payload.channelId}`);
       this.server.emit('update/channelInfo');
       this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
+      await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/invited', { channelTitle: channel.title, targetUserName: targetUser.name });
     }
   }
 
@@ -105,6 +107,7 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     const channel: Channel | null = await this.channelService.getChannelById(payload.channelId);
     if (!user || !channel) return ;
     await this.channelService.leaveChannel(user, channel);
+    await this.server.to(`channel/channel-${payload.channelId}`).emit('channel/userLeft', { chId: channel.id, userName: user.name });
     await client.leave(`channel/channel-${payload.channelId}`);
     this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
     this.server.emit('update/channelInfo');
@@ -138,7 +141,7 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     @MessageBody() createMessageDto: CreateMessageDto,
   ) {
     const messages = await this.channelService.sendNotification(createMessageDto);
-    await this.server.to(`channel/channel-${createMessageDto.channelId}`).emit('channel/sendMessage', messages);
+    await this.server.to(`channel/channel-${createMessageDto.channelId}`).emit('channel/sendNotification', messages);
   }
 
   @SubscribeMessage('channel/innerUpdate')
