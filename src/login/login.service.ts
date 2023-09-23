@@ -65,7 +65,7 @@ export class LoginService {
       await this.loginRepository.save(newUser);
       const tokens: Tokens = await this.getTokens({ uid: newUser.uid, email: newUser.email, twoFactorAuth: false });
       await this.updateRefreshToken(newUser, tokens.refreshToken);
-      return {tokens, redirectUrl: '/main'};
+      return {tokens, redirectUrl: '/login/signup'};
 
     } catch (error) {
       Logger.debug('# AuthService validateUser Error', error);

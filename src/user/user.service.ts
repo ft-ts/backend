@@ -29,8 +29,8 @@ export class UserService {
     // email, avatar, status 유효성 검사
 
     if (body.name) {
-      if (body.name.length < 4 || body.name.length > 20)
-        throw new BadRequestException('Name must be between 4 and 20 characters');
+      if (body.name.length < 3 || body.name.length > 10)
+        throw new BadRequestException('Name must be between 3 and 10 characters');
     }
 
     await this.usersRepository.update({uid: user.uid}, body);
