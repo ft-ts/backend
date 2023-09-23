@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/user/entities/user.entity";
 import { DM } from "./entities/dm.entity";
@@ -17,19 +17,35 @@ export class dmRepository {
   ) { }
 
   async createNewDm(senderUid: number, payload: {targetUid: number, message: string }) {
-    return this.dmRepository.create({
-      sender: await this.userRepository.findOneBy({ uid: senderUid }),
-      receiver: await this.userRepository.findOneBy({ uid: payload.targetUid }),
-      message: payload.message,
-    });
+    try{
+      const receiver = await this.userRepository.findOneBy({ uid: payload.targetUid });
+      const sender = await this.userRepository.findOneBy({ uid: senderUid });
+      const res = await this.dmRepository.create({
+        sender: await this.userRepository.findOneBy({ uid: senderUid }),
+        receiver: await this.userRepository.findOneBy({ uid: payload.targetUid }),
+        message: payload.message,
+      })
+      return res;
+    } catch (err) {
+      Logger.error(err);
+      return null;
+    }
   }
 
   async save(dm: DM) {
-    return await this.dmRepository.save(dm);
+    const res = await this.dmRepository.save(dm).catch((err) => {
+      Logger.error(err);
+      return null;
+    });
+    return res;
   }
 
   async update(id: number, payload: any) {
-    return await this.dmRepository.update(id, payload);
+    const res = await this.dmRepository.update(id, payload).catch((err) => {
+      Logger.error(err);
+      return null;
+    });
+    return res;
   }
 
   async findMyDmList(userUid: number) {
@@ -47,7 +63,11 @@ export class dmRepository {
     .where('sender.uid = :uid OR receiver.uid = :uid', { uid: userUid })
     .groupBy('user_uid, user_name, user_avatar')
     .orderBy('max_created_at', 'DESC')
-    .getRawMany();
+    .getRawMany()
+    .catch((err) => {
+      Logger.error(err);
+      return [];
+    });
     return res;
   }
 
@@ -61,20 +81,25 @@ export class dmRepository {
     .orderBy('dm.created_at', 'ASC')
     .getMany()
     .catch((err) => {
-      console.log(err);
+      Logger.error(err);
       return [];
     });
     return res;
   }
 
   async findDmLogById(id: number) {
-    return await this.dmRepository
-      .createQueryBuilder('dm')
-      .leftJoinAndSelect('dm.sender', 'sender')
-      .leftJoinAndSelect('dm.receiver', 'receiver')
-      .select(['dm.id', 'dm.message', 'dm.created_at', 'dm.viewed', 'dm.status', 'sender.name', 'sender.uid', 'receiver.name', 'receiver.uid'])
-      .where('dm.id = :id', { id })
-      .getOne();
+    const res = await this.dmRepository
+    .createQueryBuilder('dm')
+    .leftJoinAndSelect('dm.sender', 'sender')
+    .leftJoinAndSelect('dm.receiver', 'receiver')
+    .select(['dm.id', 'dm.message', 'dm.created_at', 'dm.viewed', 'dm.status', 'sender.name', 'sender.uid', 'receiver.name', 'receiver.uid'])
+    .where('dm.id = :id', { id })
+    .getOne()
+    .catch((err) => {
+      Logger.error(err);
+      return null;
+    });
+    return res;
   }
 
   async readDmLog(userUid: number, targetUid: number) {

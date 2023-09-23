@@ -13,7 +13,6 @@ export class SocketService{
   async addSocket(uid: number, socket: Socket){
     Logger.debug(`[SocketService] addSocket ${uid}`);
     this._socketMap.set(uid, socket);
-
   }
 
   async getSocket(uid: number) : Promise<Socket | null>{
