@@ -15,8 +15,6 @@ export class FTStrategy extends PassportStrategy(Strategy, '42') {
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
     profile: any,
     done: VerifiedCallback,
   ) {

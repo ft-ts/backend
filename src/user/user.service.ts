@@ -32,6 +32,10 @@ export class UserService {
       if (body.name.length < 3 || body.name.length > 10)
         throw new BadRequestException('Name must be between 3 and 10 characters');
     }
+    
+    const isExist = await this.usersRepository.findOneBy({ name: body.name });
+    if (isExist)
+      return new BadRequestException('Name already exists');
 
     await this.usersRepository.update({uid: user.uid}, body);
     return await this.usersRepository.findOneBy({ uid: user.uid });
