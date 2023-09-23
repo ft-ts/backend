@@ -169,4 +169,13 @@ export class ChannelController {
     targetUserSocket.emit('channel/invite', { channelId: payload.channelId });
     return res;
   }
+  
+  @Post('/leave')
+  async postChannelLeave(
+    @GetUser() user : User,
+    @Body() payload: {channelId: number}
+  ){
+    // const res = await this.channelService.leaveChannel(user, payload);
+    // return res;
+  }
 }
