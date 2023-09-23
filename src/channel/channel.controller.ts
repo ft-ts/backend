@@ -158,4 +158,15 @@ export class ChannelController {
     const res = await this.channelService.updateChannel(user, payload);
     return res;
   }
+
+  @Post('/invite')
+  async postChannelInvite(
+    @GetUser() user : User,
+    @Body() payload: {channelId: number, targetUid: number}
+  ){
+    const res = await this.channelService.inviteMember(payload);
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
+    targetUserSocket.emit('channel/invite', { channelId: payload.channelId });
+    return res;
+  }
 }

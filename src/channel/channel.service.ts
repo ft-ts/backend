@@ -195,8 +195,6 @@ export class ChannelService {
   }
 
   async  joinChannel(user: User, channel: Channel): Promise<ChannelUser> {
-    // is Exist? return
-    
     const channelUser = await this.channelUserRepository.create({
       user: user,
       channel: channel,
@@ -206,18 +204,17 @@ export class ChannelService {
     await this.channelUserRepository.save(channelUser);
     channel.memberCnt = await this.getMemberCnt(channel);
     await this.channelRepository.save(channel);
-    //emit message to channel memebers
     return channelUser;
   }
 
-  async leaveChannel(user: User, channel: Channel): Promise<void> {
-    const channelUserToDelete = await this.getChannelUser(user.uid, channel.id);
+  async leaveChannel(userUid: number, channel: Channel) {
+    const channelUserToDelete = await this.getChannelUser(userUid, channel.id);
     if (channelUserToDelete) {
       if (channelUserToDelete.role === ChannelRole.OWNER) {
         await this.changeOwner(channel.id);
       }
       await this.channelUserRepository.remove(channelUserToDelete);
-      await this.userRepository.save(user);
+      // await this.userRepository.save(user);
       channel.memberCnt = await this.getMemberCnt(channel);
       await this.channelRepository.save(channel);
       if (await this.getMemberCnt(channel) === 0) {
@@ -299,7 +296,6 @@ export class ChannelService {
       where: { user: { uid: uid }, channel: { id: channelId } },
       relations: ['user', 'channel'],
     }).then((res) => {
-      console.log("test! ",res);
       return res;
     }).catch((err) => {
       Logger.error(err);
@@ -374,11 +370,11 @@ export class ChannelService {
   }
 
   async banMember(user: User, payload: { channelId: number, targetUid: number}): Promise<void> {
-    await this.getChannelUser(user.uid, payload.channelId).then((res) => {
+    const res = await this.getChannelUser(user.uid, payload.channelId).then((res) => {
       if (res.role === ChannelRole.NORMAL) {
         throw new NotAuthorizedException('User is not the admin of the channel');
       }
-      return res;
+      return res.user.name;
     }
     ).catch((err) => {
       Logger.error(err);
@@ -406,11 +402,12 @@ export class ChannelService {
       Logger.error(err);
       return err;
     });
-      await channel.banned_uid.push(payload.targetUid);
-      const targetChannelUser = await this.getChannelUser(payload.targetUid, payload.channelId);
-      await this.channelUserRepository.delete(targetChannelUser.id);
-      channel.memberCnt = await this.getMemberCnt(channel);
-      await this.channelRepository.save(channel);
+    await channel.banned_uid.push(payload.targetUid);
+    const targetChannelUser = await this.getChannelUser(payload.targetUid, payload.channelId);
+    await this.channelUserRepository.delete(targetChannelUser.id);
+    channel.memberCnt = await this.getMemberCnt(channel);
+    await this.channelRepository.save(channel);
+    return res;
   }
 
   async unbanMember(user: User, payload: { channelId: number, targetUid: number}): Promise<void> {
@@ -437,9 +434,9 @@ export class ChannelService {
   }
 
   async kickMember(user: User, payload : { channelId: number, targetUid: number}) {
-    await this.getChannelUser(user.uid, payload.channelId).then((res) => {
-      return res;}
-    ).catch((err) => {
+    const res = await this.getChannelUser(user.uid, payload.channelId).then((res) => {
+      return res.user.name;
+    }).catch((err) => {
       Logger.error(err);
       return null;
     });
@@ -453,36 +450,26 @@ export class ChannelService {
     await this.channelUserRepository.remove(targetChannelUser);
     channel.memberCnt = await this.getMemberCnt(channel);
     await this.channelRepository.save(channel);
+    return res;
   }
 
-  async inviteMember(channelId: number, targetUid: number): Promise<void> {
-    const channel : Channel = await this.getChannelById(channelId);
-    const targetUser : User = await this.getUserByUid(targetUid);
-    await this.getMemberCnt(channel).then((res) => {
-      if (res > 4) {
-        throw new NotAuthorizedException('Channel is full');
-      }
-    }).catch((err) => {
-      Logger.error(err);
-      return err;
-    });
-    await this.isBannedUser(targetUser, channel).then((res) => {
-      if (res) {
-        throw new NotAuthorizedException('User is banned from the channel');
-      }
-    }).catch((err) => {
-      Logger.error(err);
-      return err;
-    });
-    await this.isChannelMember(targetUser, channelId).then((res) => {
-      if (res) {
-        throw new NotAuthorizedException('User is already a member of the channel');
-      }
-    }).catch((err) => {
-      Logger.error(err);
-      return err;
-    });
-    await this.joinChannel(targetUser, channel);
+  async inviteMember(payload: {channelId: number, targetUid: number}){
+    try {
+      const channel = await this.getChannelById(payload.channelId);
+      const targetUser = await this.getUserByUid(payload.targetUid);
+      if (!channel || !targetUser) throw new NotFoundException('User or channel not found');
+      const userNum = await this.getMemberCnt(channel);
+      if (userNum > 5) throw new NotAuthorizedException('Channel is full');
+      const isBanned = await this.isBannedUser(targetUser, channel);
+      if (isBanned) throw new NotAuthorizedException('User is banned from the channel');
+      const isMember = await this.isChannelMember(targetUser, payload.channelId);
+      if (isMember) throw new NotAuthorizedException('User is already a member of the channel');
+      await this.joinChannel(targetUser, channel);
+      return targetUser.name;
+    } catch (error: any){
+      Logger.error(error);
+      return error;
+    }
   }
 
   /* ==== */
@@ -500,7 +487,7 @@ export class ChannelService {
     const msg = createMessageDto.content;
     const message = this.cmRepository.create({
       channel: channel,
-      isNotice: false,
+      isNotice: createMessageDto.isNotice,
       sender_uid: user.uid,
       content: msg,
       timeStamp: new Date().toISOString()
@@ -529,21 +516,6 @@ export class ChannelService {
     });
     
     return messages;
-  }
-
-  async sendNotification(createMessageDto: CreateMessageDto): Promise<Cm | undefined> {
-    const channel = await this.getChannelById(createMessageDto.channelId);
-    const message = this.cmRepository.create({
-      isNotice: true,
-      sender_uid: null,
-      content: createMessageDto.content,
-      channel: channel,
-      timeStamp: new Date().toISOString().
-      replace(/T/, ' ').      // replace T with a space
-      replace(/\..+/, '')    // delete the dot and everything after,
-    });
-    await this.cmRepository.save(message)
-    return message;
   }
 
   async getUserRole(user: User, channelId: number): Promise<ChannelRole> {
