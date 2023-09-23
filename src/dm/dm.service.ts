@@ -1,25 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { dmRepository } from './dm.repository';
-import { Socket } from 'socket.io';
 
 @Injectable()
 export class DmService {
-  private dmSocketMap = new Map<number, Socket>();
   constructor(
     private readonly dmRepository: dmRepository,
   ) { }
-
-  addSocket(socket: Socket) {
-    this.dmSocketMap.set(socket.data.uid, socket);
-  }
-
-  removeSocket(socket: Socket) {
-    this.dmSocketMap.delete(socket.data.uid);
-  }
-
-  getSocketByUid(uid: number) {
-    return this.dmSocketMap.get(uid);
-  }
 
   async saveDmLog(senderUid : number, payload: { targetUid: number, message: string }) {
     const dm = await this.dmRepository.createNewDm(senderUid, payload).catch((err) => {

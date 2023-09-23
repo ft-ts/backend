@@ -11,6 +11,7 @@ import { UserModule } from 'src/user/user.module';
 import { Block } from 'src/user/entities/block.entity';
 import { CheckBlocked } from 'src/common/guards/block.guard';
 import { AtGuard } from 'src/auth/auth.guard';
+import { SocketModule } from 'src/common/module/socket.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AtGuard } from 'src/auth/auth.guard';
     ]),
     AuthModule,
     UserModule,
+    SocketModule,
   ],
   controllers: [DmController],
   providers: [DmGateway, DmService, dmRepository, CheckBlocked, AtGuard],

@@ -2,7 +2,6 @@ import { Controller,Post, Patch, Body, UseGuards, Get, Query, Res, Param } from 
 import { GetUser } from 'src/common/decorators';
 import { Response } from 'express';
 import { ChannelService } from './channel.service';
-import { AuthGuard } from '@nestjs/passport'; // 예시로 AuthGuard 사용
 import { User } from '../user/entities/user.entity';
 import { Channel } from './entities/channel.entity';
 import { InvalidPasswordException, NotAuthorizedException, NotFoundException }
@@ -10,12 +9,15 @@ import { InvalidPasswordException, NotAuthorizedException, NotFoundException }
 import { ChannelPasswordDto } from './dto/channel-password.dto';
 import { AtGuard } from 'src/auth/auth.guard';
 import { CreateChannelDto } from './dto/create-channel.dto';
-
+import { ChannelMode } from './enum/channelMode.enum';
+import { SocketService } from 'src/common/service/socket.service';
+import { ChannelRole } from './enum/channelRole.enum';
 
 @Controller('channels')
 @UseGuards(AtGuard)
 export class ChannelController {
-  constructor(private readonly channelService: ChannelService) {}
+  constructor(private readonly channelService: ChannelService,
+    private readonly socketService: SocketService) {}
 
   @Post('create')
   async createChannel(
@@ -89,7 +91,10 @@ export class ChannelController {
     @GetUser() user : User,
     @Body() payload: {channelId: number, targetUid: number}
   ) {
-    const res = await this.channelService.banMember(user, payload)
+    const res = await this.channelService.banMember(user, payload);
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
+    targetUserSocket.emit('channel/out', { channelId: payload.channelId, reason: 'ban' })
+    await targetUserSocket.leave(`channel/channel-${payload.channelId}`);
     return res;
   }
 
@@ -107,16 +112,10 @@ export class ChannelController {
     @GetUser() user : User,
     @Body() payload: {channelId: number, targetUid: number}
   ){
-    const res = await this.channelService.kickMember(user, payload)
-    return res;
-  }
-
-  @Post('/invite')
-  async inviteMember(
-    @GetUser() user : User,
-    @Body() payload: {channelId: number, targetUid: number}
-  ){
-    const res = await this.channelService.inviteMember(user, payload)
+    const res = await this.channelService.kickMember(user, payload);
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
+    targetUserSocket.emit('channel/out', { channelId: payload.channelId, reason: 'kick' })
+    await targetUserSocket.leave(`channel/channel-${payload.channelId}`);
     return res;
   }
 
@@ -125,8 +124,8 @@ export class ChannelController {
     @GetUser() user : User,
     @Body() payload: {channelId: number, targetUid: number}
   ){
-    const res = await this.channelService.muteMember(user, payload)
-    return res;
+    const res = await this.channelService.muteMember(user, payload);
+    return res; 
   }
 
   @Post('/grant/admin')
@@ -134,15 +133,49 @@ export class ChannelController {
     @GetUser() user : User,
     @Body() payload: {channelId: number, targetUid: number}
   ){
-    const res = await this.channelService.grantAdmin(user, payload)
+    const res = await this.channelService.grantAdmin(user, payload);
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
+    targetUserSocket.emit('channel/changeGranted', { channelId: payload.channelId, granted: ChannelRole.ADMIN});
     return res;
   }
 
-  // @Post('/revoke/admin')
-  // async revokeAdmin(
-  //   @GetUser() user : User,
-  //   @Body() payload: {channelId: number, targetUid: number}
-  // }{
-  //   const res = await this.channelService.revokeAdmin(user, payload);
-  // }
+  @Post('/revoke/admin')
+  async revokeAdmin(
+    @GetUser() user : User,
+    @Body() payload: {channelId: number, targetUid: number}
+  ){
+    const res = await this.channelService.revokeAdmin(user, payload);
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
+    targetUserSocket.emit('channel/changeGranted', { channelId: payload.channelId, granted: ChannelRole.NORMAL});
+    return res;
+  }
+
+  @Post('/update')
+  async postChannelUpdate(
+    @GetUser() user : User,
+    @Body() payload: {channelId: number, title: string, password: string, mode: ChannelMode}
+  ) {
+    const res = await this.channelService.updateChannel(user, payload);
+    return res;
+  }
+
+  @Post('/invite')
+  async postChannelInvite(
+    @GetUser() user : User,
+    @Body() payload: {channelId: number, targetUid: number}
+  ){
+    const res = await this.channelService.inviteMember(payload);
+    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
+    targetUserSocket.emit('channel/invite', { channelId: payload.channelId });
+    return res;
+  }
+  
+  @Post('/leave')
+  async postChannelLeave(
+    @GetUser() user : User,
+    @Body() payload: {channelId: number}
+  ){
+    // const res = await this.channelService.leaveChannel(user, payload);
+    // return res;
+  }
 }
