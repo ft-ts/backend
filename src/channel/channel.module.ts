@@ -10,6 +10,10 @@ import { ChannelUser } from './entities/channelUser.entity';
 import { ChannelController } from './channel.controller';
 import { AtGuard } from 'src/auth/auth.guard';
 import { SocketModule } from 'src/common/module/socket.module';
+import { CheckBlocked } from 'src/common/guards/block.guard';
+import { Block } from 'src/user/entities/block.entity';
+import { UserModule } from 'src/user/user.module';
+
 
 @Module({
   imports: [
@@ -18,9 +22,10 @@ import { SocketModule } from 'src/common/module/socket.module';
       ChannelUser,
       Cm,
       User,
+      Block
     ]),
     AuthModule,
-    SocketModule
+    SocketModule,
   ],
   providers: [ChannelGateway, ChannelService, AtGuard],
   controllers: [ChannelController]

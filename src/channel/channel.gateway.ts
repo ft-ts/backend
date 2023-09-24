@@ -16,6 +16,9 @@ import { User } from 'src/user/entities/user.entity';
 import { UseGuards } from '@nestjs/common';
 import { AtGuard } from 'src/auth/auth.guard';
 import { Channel } from './entities/channel.entity';
+import { Repository } from 'typeorm';
+import { Block } from 'src/user/entities/block.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @UseGuards(AtGuard)
 @WebSocketGateway({
@@ -29,6 +32,8 @@ implements OnGatewayConnection, OnGatewayDisconnect{
   constructor(
     private readonly channelService: ChannelService,
     private readonly socketService: SocketService,
+    @InjectRepository(Block)
+    private readonly blockRepository: Repository<Block>,
   ) { }
 
   @WebSocketServer()
@@ -74,21 +79,19 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     @MessageBody() payload: {channelId: number, password: string}){
       let channel: Channel;
       const user: User | null = await this.channelService.getUserByUid(client.data.uid);
+      const isMember = await this.channelService.isChannelMember(user, payload.channelId);
       if (!user) return ;
       try {
         channel = await this.channelService.enterChannel(user, payload);
       } catch (error) {
-        if (error instanceof NotAuthorizedException) {
           client.emit('channel/join/fail', { message: error.message });
-        } else if (error instanceof InvalidPasswordException) {
-          client.emit('channel/join/fail', { message: error.message });
-        } else {
-          client.emit('channel/join/fail', { message: error.message });
-        }
-        return ;
+          return ;
       }
-      await client.join(`channel/channel-${payload.channelId}`);
+      client.join(`channel/channel-${payload.channelId}`);
       client.emit('channel/join/success', channel);
+      if (!isMember) {
+        client.emit('channel/join/new', channel);
+      }
   }
 
   @SubscribeMessage('channel/leaveChannel')
@@ -99,7 +102,7 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     const user: User | null = await this.channelService.getUserByUid(client.data.uid);
     const channel: Channel | null = await this.channelService.getChannelById(payload.channelId);
     if (!user || !channel) return ;
-    // this.channelService.leaveChannel(user, channel);
+    this.channelService.leaveChannel(client.data.uid, channel);
     await client.leave(`channel/channel-${payload.channelId}`);
     this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
     this.server.emit('update/channelInfo');
@@ -115,6 +118,16 @@ implements OnGatewayConnection, OnGatewayDisconnect{
   ) {
     const user: User | null = await this.channelService.getUserByUid(client.data.uid);
     if (!user) return ;
+
+    // const blockedUsers = await this.blockRepository.find({
+    //   where: { user: { uid: user.uid } },
+    //   relations: ['blocked'],
+    // });
+    // const blockedUserIds = blockedUsers.map((blockedUser) => blockedUser.blocked.uid);
+
+    // const members = await this.channelService.getChannelMembers(createMessageDto.channelId);
+    // const memberUids = members.map((member) => member.user.uid);
+
     const message = await this.channelService.createMessage(user, createMessageDto);
     const res = {
       id: message.id,
@@ -124,6 +137,13 @@ implements OnGatewayConnection, OnGatewayDisconnect{
       content: message.content,
       timeStamp: message.timeStamp,
     }
+
+    // for (const memberUid of memberUids) {
+    //   const memberSocket = await this.socketService.getSocket(memberUid);
+    //   if (memberSocket) {
+    //     memberSocket.leave(`channel/channel-${createMessageDto.channelId}`);
+    //   }
+    // }
     this.server.to(`channel/channel-${createMessageDto.channelId}`).emit('channel/sendMessage', res);
   }
 
