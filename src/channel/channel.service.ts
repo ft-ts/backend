@@ -1,5 +1,5 @@
 import { Injectable, Body } from '@nestjs/common';
-import { MoreThan, Not, Repository } from 'typeorm';
+import { In, MoreThan, Not, Repository } from 'typeorm';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import * as bcrypt from 'bcrypt';
 import { ChannelMode } from './enum/channelMode.enum';
@@ -14,6 +14,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { ChannelUser } from './entities/channelUser.entity';
 import { ChannelPasswordDto } from './dto/channel-password.dto';
 import { Logger } from '@nestjs/common';
+import { Block } from 'src/user/entities/block.entity';
 
 @Injectable()
 export class ChannelService {
@@ -28,6 +29,8 @@ export class ChannelService {
     private channelUserRepository: Repository<ChannelUser>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Block)
+    private blockRepository: Repository<Block>,
   ) {}
 
   /* ==== */
@@ -50,13 +53,12 @@ export class ChannelService {
 
   async isChannelMember(user: User, channelId: number): Promise<boolean> {
     const channel = await this.getChannelById(channelId);
-    if (!channel) {
-      throw new NotFoundException('Channel not found.');
+    if (!channel || !user) {
+      return (false);
     }
     const isMember = await this.channelUserRepository.findOne({
       where: { user: { uid: user.uid }, channel: { id: channel.id } },
     });
-
     return !!isMember; // ????
   }
 
@@ -313,52 +315,54 @@ export class ChannelService {
     }
   }
   
-  async grantAdmin(user: User, payload: { channelId: number, targetUid: number}): Promise<void> {
+  async grantAdmin(user: User, payload: { channelId: number, targetUid: number}) {
     const channelOwner = await this.getChannelUser(user.uid, payload.channelId);
     const targetUser = await this.getChannelUser(payload.targetUid, payload.channelId);
     if (!channelOwner || !targetUser) {
-      throw new NotFoundException('User not found');
+      return { success: false, message: 'User not found'};
     }
     if (channelOwner.role !== ChannelRole.OWNER) {
-      throw new NotAuthorizedException('User is not the owner of the channel');
+      return { success: false, message: 'User is not the owner of the channel'};
     }
     if (targetUser.role === ChannelRole.NORMAL) {
       targetUser.role = ChannelRole.ADMIN;
       await this.channelUserRepository.save(targetUser);
     } else {
-      throw new NotAuthorizedException('User has already been granted admin');
+      return { success: false, message: 'User is already an admin'};
     }
+    return { success: true, message: `${targetUser.user.name} has been granted admin`};
   }
 
-  async revokeAdmin(user: User, payload: { channelId: number, targetUid: number}): Promise<void> {
+  async revokeAdmin(user: User, payload: { channelId: number, targetUid: number}) {
     const channelOwner = await this.getChannelUser(user.uid, payload.channelId);
     const targetUser = await this.getChannelUser(payload.targetUid, payload.channelId);
     if (!channelOwner || !targetUser) {
-      throw new NotFoundException('User not found');
+      return { success: false, message: 'User not found'};
     }
     if (channelOwner.role !== ChannelRole.OWNER) {
-      throw new NotAuthorizedException('User is not the owner of the channel');
+      return { success: false, message: 'User is not the owner of the channel'};
     }
     if (targetUser.role === ChannelRole.ADMIN) {
       targetUser.role = ChannelRole.NORMAL;
       await this.channelUserRepository.save(targetUser);
     } else {
-      throw new NotAuthorizedException('User is not an admin');
+      return { success: false, message: 'User is not an admin'};
     }
+    return { success: true, message: `${targetUser.user.name} has been revoked admin`};
   }
 
-  async muteMember(user: User, payload: { channelId: number, targetUid: number}): Promise<void> {
+  async muteMember(user: User, payload: { channelId: number, targetUid: number}) {
     const channelAdmin = await this.getChannelUser(user.uid, payload.channelId);
     const targetUser = await this.getChannelUser(payload.targetUid, payload.channelId);
     if (!channelAdmin || !targetUser) {
-      throw new NotFoundException('User not found');
+      return { success: false, message: 'User not found'};
     }
     if (channelAdmin.role === ChannelRole.NORMAL) {
-      throw new NotAuthorizedException('User is not the admin of the channel');
+      return { success: false, message: 'User is not the admin of the channel'};
     }
     const channel = await this.getChannelById(payload.channelId);
     if (await this.isMutedMember(user, channel)) {
-      throw new NotAuthorizedException('Member is already muted');
+      return { success: false, message: 'User is already muted'};
     } else {
       channel.muted_uid.push(payload.targetUid);
       await this.channelRepository.save(channel);
@@ -367,14 +371,14 @@ export class ChannelService {
         await this.channelRepository.save(channel);
       }, this.muteDuration);
     }
+    return { success: true, message: `${targetUser.user.name} has been muted`};
   }
 
-  async banMember(user: User, payload: { channelId: number, targetUid: number}): Promise<void> {
-    const res = await this.getChannelUser(user.uid, payload.channelId).then((res) => {
+  async banMember(user: User, payload: { channelId: number, targetUid: number}) {
+      await this.getChannelUser(user.uid, payload.channelId).then((res) => {
       if (res.role === ChannelRole.NORMAL) {
-        throw new NotAuthorizedException('User is not the admin of the channel');
+        return { success: false, message: 'You are not the admin of the channel'};
       }
-      return res.user.name;
     }
     ).catch((err) => {
       Logger.error(err);
@@ -394,9 +398,9 @@ export class ChannelService {
       Logger.error(err);
       return err;
     });
-    const isBannedTarget = await this.isBannedUser(targetUser.user, channel).then((res) => {
+    await this.isBannedUser(targetUser.user, channel).then((res) => {
       if (res === true) {
-        throw new AlreadyPresentExeption('User has already been banned');
+        return { success: false, message: 'User is already banned'};
       }
     }).catch((err) => {
       Logger.error(err);
@@ -407,42 +411,43 @@ export class ChannelService {
     await this.channelUserRepository.delete(targetChannelUser.id);
     channel.memberCnt = await this.getMemberCnt(channel);
     await this.channelRepository.save(channel);
-    return res;
+    return { success: true, message: `${targetUser.name} has been banned`};
   }
 
-  async unbanMember(user: User, payload: { channelId: number, targetUid: number}): Promise<void> {
+  async unbanMember(user: User, payload: { channelId: number, targetUid: number}) {
     await this.getChannelUser(user.uid, payload.channelId).then((res) => {
       if (res.role === ChannelRole.NORMAL) {
-        throw new NotAuthorizedException('User is not the admin of the channel');
+        return { success: false, message: 'User is not the admin of the channel'};
       }
     }).catch((err) => {
       Logger.error(err);
       return err;
     });
     const targetChannelUser = await this.getChannelUser(payload.targetUid, payload.channelId).catch((err) => {
-      throw new NotFoundException('User not found');
+      Logger.error(err);
+      return err;
     });
     const channel = await this.getChannelById(payload.channelId);
     await this.isBannedUser(targetChannelUser.user, channel).then((res) => {
       if (!res) {
-        throw new NotFoundException('User is not banned');
+        return { success: false, message: 'User is not banned'};
       }
     }).catch((err) => {
       Logger.error(err);
       return err;
     });
+    return { success: true, message: `${targetChannelUser.user.name} has been unbanned`};
   }
 
   async kickMember(user: User, payload : { channelId: number, targetUid: number}) {
     const res = await this.getChannelUser(user.uid, payload.channelId).then((res) => {
-      return res.user.name;
     }).catch((err) => {
       Logger.error(err);
-      return null;
+      return res;
     });
     const targetChannelUser = await this.getChannelUser(payload.targetUid, payload.channelId).then((res) => {
-      return res;}
-    ).catch((err) => {
+      return res;
+    }).catch((err) => {
       Logger.error(err);
       return null;
     });
@@ -450,25 +455,37 @@ export class ChannelService {
     await this.channelUserRepository.remove(targetChannelUser);
     channel.memberCnt = await this.getMemberCnt(channel);
     await this.channelRepository.save(channel);
-    return res;
+    return {success: true, message: `${targetChannelUser.user.name} has been kicked`};
   }
 
   async inviteMember(payload: {channelId: number, targetUid: number}){
     try {
       const channel = await this.getChannelById(payload.channelId);
       const targetUser = await this.getUserByUid(payload.targetUid);
-      if (!channel || !targetUser) throw new NotFoundException('User or channel not found');
+      if (!channel || !targetUser)
+      {
+        return { success: false , message: 'User or channel not found'};
+      }
       const userNum = await this.getMemberCnt(channel);
-      if (userNum > 5) throw new NotAuthorizedException('Channel is full');
+      if (userNum > 5)
+      {
+        return { success: false, message: 'Channel is full'};
+      } 
       const isBanned = await this.isBannedUser(targetUser, channel);
-      if (isBanned) throw new NotAuthorizedException('User is banned from the channel');
+      if (isBanned)
+      {
+        return { success: false, message: 'User is banned from the channel'};
+      }
       const isMember = await this.isChannelMember(targetUser, payload.channelId);
-      if (isMember) throw new NotAuthorizedException('User is already a member of the channel');
+      if (isMember)
+      {
+        return { success: false, message: 'User is already a member of the channel'};
+      }
       await this.joinChannel(targetUser, channel);
-      return targetUser.name;
+      return { success: true, message: `${targetUser.name} joined the channel` };
     } catch (error: any){
       Logger.error(error);
-      return error;
+      throw error;
     }
   }
 
@@ -504,10 +521,16 @@ export class ChannelService {
     const channelUser = await this.channelUserRepository.findOne({
       where: { user: { uid: user.uid }, channel: { id: channel.id } },
     });
+    const blockedUsers = await this.blockRepository.find({
+      where: { user: { uid: user.uid } },
+      relations: ['blocked'],
+    });
+    const blockedUserIds = blockedUsers.map((blockedUser) => blockedUser.blocked.uid);
     const messages = await this.cmRepository.find({
       where: {
         channel: { id: channel.id },
         timeStamp: MoreThan(channelUser?.joined_at), // joined_at 이후의 메시지만 가져옴
+        sender_uid: Not(In(blockedUserIds)),
       },
       order: { timeStamp: 'ASC' },
     }).catch((err) => {
