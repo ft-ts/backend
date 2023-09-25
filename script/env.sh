@@ -19,6 +19,16 @@ git clone git@github.com:ft-ts/env.git
 
 echo "SERVER_IP='$selected_ip'" > "$env_file"
 cat env/.env.local.back >> "$env_file" 
-echo ".env 파일을 생성했습니다!"
+
+echo ""
+echo "✅ .env 파일을 생성했습니다!" 
+echo "✅ 42 API 설정을 하려면 아래 링크로 접속하세요."
+
+# 42 API 세팅
+echo ""
+echo "https://profile.intra.42.fr/oauth/applications"
+echo ""
+
+
 
 rm -rf env
