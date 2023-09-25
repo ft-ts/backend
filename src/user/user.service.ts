@@ -22,16 +22,22 @@ export class UserService {
   ) { }
 
   async updateUser(user: User, body: Partial<User>) {
+
+    if (!body || !(body.twoFactorAuth || body.name || body.avatar))
+      throw new BadRequestException('Body is undefined');
+
     if (body.uid || body.email)
       throw new BadRequestException('Cannot change uid or email');
+
     if (body.name) {
       if (body.name.length < 3 || body.name.length > 10)
         throw new BadRequestException('Name must be between 3 and 10 characters');
+
+      const isExist = await this.usersRepository.findOneBy({ name: body.name });
+      if (isExist)
+        return new BadRequestException('Name already exists');
     }
-    const isExist = await this.usersRepository.findOneBy({ name: body.name });
-    if (isExist)
-      return new BadRequestException('Name already exists');
-    await this.usersRepository.update({uid: user.uid}, body);
+    await this.usersRepository.update({ uid: user.uid }, body);
     return await this.usersRepository.findOneBy({ uid: user.uid });
   }
 

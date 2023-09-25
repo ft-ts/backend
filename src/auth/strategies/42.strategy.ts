@@ -21,12 +21,19 @@ export class FTStrategy extends PassportStrategy(Strategy, '42') {
     done: VerifiedCallback,
   ) {
     Logger.debug('# FTStrategy validate');
-    const { id, login, email, image } = profile._json;
+    const { id, login, email, image } = JSON.parse(profile._raw);
+    console.log('🔥 accessToken', accessToken);
+    console.log('🔥 refreshToken', refreshToken);
+    console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥');
+    console.log('🔥 profile', JSON.stringify(profile, null, 2));
+    console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥');
+    console.log('🔥 profile_raw', JSON.parse(profile._raw));
+    
     done(null, {
       uid: id,
       name: login,
       email,
-      avatar: image.link,
+      avatar: image?.versions?.medium,
     });
   }
 }

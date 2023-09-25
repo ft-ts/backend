@@ -8,11 +8,14 @@ import {
   ParseIntPipe,
   UseGuards,
   Delete,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
 import { GetUser } from '../common/decorators';
 import { AtGuard } from 'src/auth/auth.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @UseGuards(AtGuard)
 @Controller('users')
@@ -26,9 +29,9 @@ export class UserController {
   }
 
   @Patch()
-  async updateUser(@GetUser() user: User, @Body() body) {
-    const result = await this.usersService.updateUser(user, body);
-    return result;
+  @UseInterceptors(FileInterceptor('imgData'))
+  async updateUser(@GetUser() user: User, @Body() body: any) {
+    return await this.usersService.updateUser(user, body);
   }
 
   @Get('all/except/me')
@@ -38,9 +41,8 @@ export class UserController {
 
   @Get('friends')
   async findFriends(@GetUser() user: User) {
-    const result = await this.usersService.findFriends(user);
-    return result;
-  }
+    return await this.usersService.findFriends(user);
+  }3
 
   @Post('friends')
   async createFriendship(@GetUser() user: User, @Body() body) {
