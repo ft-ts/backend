@@ -1,6 +1,7 @@
-import { Entity, Column, ManyToOne, PrimaryGeneratedColumn, BaseEntity, CreateDateColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, PrimaryGeneratedColumn, BaseEntity, CreateDateColumn, JoinColumn } from 'typeorm';
 import { ChannelUser } from './channelUser.entity';
 import { Channel } from './channel.entity';
+import { User } from '../../user/entities/user.entity';
 
 @Entity({ name: 'cm' })
 export class Cm extends BaseEntity {
@@ -8,13 +9,15 @@ export class Cm extends BaseEntity {
   id: number;
 
   @ManyToOne(() => Channel, (channel) => channel.message)
+  @JoinColumn({name: 'channel_id'})
   channel: Channel;
 
   @Column({ nullable: false })
   isNotice: boolean;
-  
-  @Column('int', { nullable: true })
-  sender_uid: number;
+
+  @ManyToOne(() => User, (user) => user.uid)
+  @JoinColumn({name: 'user_uid'})
+  sender: User;
 
   @Column('text', { nullable: false })
   content: string;
