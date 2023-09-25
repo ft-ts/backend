@@ -37,6 +37,10 @@ export class UserService {
       if (isExist)
         return new BadRequestException('Name already exists');
     }
+    
+    const isExist = await this.usersRepository.findOneBy({ name: body.name });
+    if (isExist)
+      return new BadRequestException('Name already exists');
 
     await this.usersRepository.update({ uid: user.uid }, body);
     return await this.usersRepository.findOneBy({ uid: user.uid });
