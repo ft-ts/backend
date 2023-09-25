@@ -25,6 +25,8 @@ export class ChannelController {
     @Body() payload: CreateChannelDto,
   ) {
       const channel = await this.channelService.createChannel(user.uid, payload);
+      const socket = await this.socketService.getSocket(user.uid);
+      await socket.join(`channel/channel-${channel.id}`);
       return channel;
   }
 
@@ -169,13 +171,16 @@ export class ChannelController {
     targetUserSocket.emit('channel/invite', { channelId: payload.channelId });
     return res;
   }
-  
-  @Post('/leave')
-  async postChannelLeave(
+
+  @Post('/join')
+  async postChannelJoin(
     @GetUser() user : User,
-    @Body() payload: {channelId: number}
+    @Body() payload: {channelId: number, password: string}
   ){
-    // const res = await this.channelService.leaveChannel(user, payload);
-    // return res;
+    const res = await this.channelService.joinChannel(user.uid, payload);
+    const socket = await this.socketService.getSocket(user.uid);
+    await socket.join(`channel/channel-${payload.channelId}`);
+    return res;
   }
+
 }

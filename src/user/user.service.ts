@@ -21,7 +21,7 @@ export class UserService {
     private readonly blockRepository: Repository<Block>,
   ) { }
 
-  async updateUser(user: User, body: any) {
+  async updateUser(user: User, body: Partial<User>) {
 
     if (!body || !(body.twoFactorAuth || body.name || body.avatar))
       throw new BadRequestException('Body is undefined');
@@ -37,29 +37,32 @@ export class UserService {
       if (isExist)
         return new BadRequestException('Name already exists');
     }
-    
-    const isExist = await this.usersRepository.findOneBy({ name: body.name });
-    if (isExist)
-      return new BadRequestException('Name already exists');
-
     await this.usersRepository.update({ uid: user.uid }, body);
     return await this.usersRepository.findOneBy({ uid: user.uid });
   }
 
-  async findAll() {
-    return await this.usersRepository.find({ order: { uid: 'ASC' } });
-  }
-
   async findAllExceptMe(user: User) {
-    return await this.usersRepository.find({
-      where: { uid: Not(user.uid) },
+    const res = await this.usersRepository.find({
+      where: { uid: Not(user.uid)},
+      select: [
+        'uid',
+        'name',
+        'avatar',
+        'status',
+        'rating',
+        'custom_wins',
+        'custom_losses',
+        'ladder_wins',
+        'ladder_losses',
+      ],
       order: { uid: 'ASC' },
+    }).catch((err) => {
+      Logger.error(err);
+      throw new BadRequestException('Cannot find users');
     });
+    return res;
   }
 
-  async findChannelUsers() {
-    return `This action returns all users in channel`;
-  }
 
   async findFriends(user: User) {
     const friends = await this.friendshipRepository
@@ -68,58 +71,71 @@ export class UserService {
       .leftJoinAndSelect('friendship.friend', 'friend')
       .where('user.uid = :uid', { uid: user.uid, })
       .select(['friendship.id', 'user.name', 'user.uid', 'friend'])
-      .getMany();
-
+      .getMany()
+      .catch((err) => {
+        Logger.error(err);
+        throw new BadRequestException('Cannot find friends');
+      });
     return friends.map((friendship) => friendship.friend);
   }
 
   async findOne(uid: number) {
-    const user = await this.usersRepository.findOneBy({ uid });
-    if (!user)
-      throw new NotFoundException(`User not found`);
-    return user;
+    const user = await this.usersRepository.findOne({
+      where: { uid: uid},
+    }).catch((err) => {
+      Logger.error(err);
+      throw new BadRequestException('Cannot find user');
+    });
+    const blocked = await this.findBlocked(user).catch((err) => {
+      Logger.error(err);
+      throw new BadRequestException('Cannot find blocked');
+    });
+    const partialUser: Partial<User> = {
+      uid: user.uid,
+      name: user.name,
+      avatar: user.avatar,
+      rating: user.rating,
+      custom_wins: user.custom_wins,
+      custom_losses: user.custom_losses,
+      ladder_wins: user.ladder_wins,
+      ladder_losses: user.ladder_losses,
+      status: user.status,
+      blocked: blocked,
+    }
+    return partialUser;
   }
 
-  /**
-   * [ 친구 요청 ] 단방향
-   * 1. 이미 친구인지 확인
-   * @FAIL : 이미 친구입니다.
-   * 
-   * 2. 없으면 새로운 친구 요청을 생성한다.
-   * @SUCCESS : 친구 요청 성공.
-   */
-  async createFriendship(userInfo, targetUid): Promise<{}> {
+  async createFriendship(userUid: number, targetUid: number): Promise<{}> {
+    if (userUid === targetUid) throw new BadRequestException('Cannot add yourself as a friend');
     const user = await this.usersRepository.findOne({
-      where: { uid: userInfo.uid },
+      where: { uid: userUid },
       relations: ['friendships'],
     });
-
-    if (user.uid === targetUid) throw new BadRequestException('Cannot add yourself as a friend');
-
     const user2 = await this.usersRepository.findOne({
       where: { uid: targetUid },
       relations: ['friendships'],
     });
-
     if (!user || !user2) throw new NotFoundException(`User not found`);
-
     const existingFriendship = await this.friendshipRepository
       .createQueryBuilder('friendship')
       .where('friendship.user = :userId AND friendship.friend = :friendId', {
         userId: user.id,
         friendId: user2.id,
       })
-      .getOne();
+      .getOne()
+      .catch((err) => {
+        Logger.error(err);
+        throw new BadRequestException('Cannot find friendship');
+      });
     if (existingFriendship) {
+      //return exception
       throw new BadRequestException('The friendship already exists');
     }
-
     const friendship = this.friendshipRepository.create({
       user: user,
       friend: user2,
     });
     await this.friendshipRepository.save(friendship);
-
     const friendships = await this.findFriends(user);
     return friendships;
   }
@@ -133,18 +149,19 @@ export class UserService {
         uid: userInfo.uid,
         friendUid: targetUid,
       })
-      .getOne();
-    if (!friendship) throw new NotFoundException(`Friendship not found`);
-
-    Logger.debug(`[UserService deleteFriendship] ${friendship.user.name}(${friendship.user.uid})와 ${friendship.friend.name}(${friendship.friend.uid})의 친구관계를 삭제합니다.`);
+      .getOne()
+      .catch((err) => {
+        Logger.error(err);
+        throw new NotFoundException(`Friendship not found`);
+      });
     return await this.friendshipRepository.delete(friendship.id);
   }
 
   /**
    * @Blocked
    */
-  async findBlocked(user: User) {
-    return await this.blockRepository
+  private async findBlocked(user: User) {
+    const res = await this.blockRepository
       .createQueryBuilder('block')
       .leftJoinAndSelect('block.user', 'user')
       .leftJoinAndSelect('block.blocked', 'blocked')
@@ -152,80 +169,58 @@ export class UserService {
         uid: user.uid,
       })
       .select(['block.id', 'user.name', 'user.uid', 'blocked.name', 'blocked.uid'])
-      .getMany();
+      .getMany()
+      .catch((err) => {
+        Logger.error(err);
+        throw new BadRequestException('Cannot find blocked');
+      });
+    return res;
   }
 
-  async findAllBlocked() {
-    return await this.blockRepository
-      .createQueryBuilder('block')
-      .leftJoinAndSelect('block.user', 'user')
-      .leftJoinAndSelect('block.blocked', 'blocked')
-      .select(['block.id', 'user.name', 'user.uid', 'blocked.name', 'blocked.uid'])
-      .getMany();
-  }
-
-  async createBlocked(userInfo, targetUid): Promise<{}> {
+  async createBlocked(userUid: number, targetUid: number) {
+    if (userUid === targetUid) throw new BadRequestException('Cannot block yourself');
     const user = await this.usersRepository.findOne({
-      where: { uid: userInfo.uid },
+      where: { uid: userUid },
       relations: ['blocked'],
     });
-
-    if (user.uid === targetUid) throw new BadRequestException('Cannot block yourself');
-
     const user2 = await this.usersRepository.findOne({
       where: { uid: targetUid },
       relations: ['blocked'],
     });
     if (!user || !user2) throw new NotFoundException(`User not found`);
-
-    const existingBlocked = await this.blockRepository
-      .createQueryBuilder('block')
-      .where('block.user = :userId AND block.blocked = :blockedId', {
-        userId: user.id,
-        blockedId: user2.id,
-      })
-      .getOne();
-
-    if (existingBlocked) {
-      throw new BadRequestException('The blocked already exists');
-    }
-
+    const blockCheck: boolean = await this.checkBlocked(userUid, targetUid)
+    .catch((err) => {
+      Logger.error(err);
+      throw new BadRequestException('Cannot find blocked');
+    });
+    if (blockCheck) throw new BadRequestException('The blocked already exists');
     const blocked = this.blockRepository.create({
       user: user,
       blocked: user2,
     });
     await this.blockRepository.save(blocked);
-
-    const blocks = await this.blockRepository
-      .createQueryBuilder('block')
-      .leftJoinAndSelect('block.user', 'user')
-      .leftJoinAndSelect('block.blocked', 'blocked')
-      .where('block.user = :userId AND block.blocked = :blockedId', {
-        userId: user.id,
-        blockedId: user2.id,
-      })
-      .select(['block.id', 'user.name', 'blocked.name'])
-      .getMany();
-
-    return blocks;
+    return targetUid;
   }
 
-  async deleteBlocked(userInfo, targetUid) {
+  async deleteBlocked(userUid: number, targetUid: number) {
     const blocked = await this.blockRepository
       .createQueryBuilder('block')
       .leftJoinAndSelect('block.user', 'user')
       .leftJoinAndSelect('block.blocked', 'blocked')
       .where('(user.uid = :uid AND blocked.uid = :blockedUid)', {
-        uid: userInfo.uid,
+        uid: userUid,
         blockedUid: targetUid,
       })
-      .getOne();
+      .getOne()
+      .catch((err) => {
+        Logger.error(err);
+        throw new NotFoundException(`Blocked not found`);
+      });
     if (!blocked) throw new NotFoundException(`Blocked not found`);
-
-    Logger.debug(`[UserService deleteBlocked] ${blocked.user.name}(${blocked.user.uid})가 ${blocked.blocked.name}(${blocked.blocked.uid})에 대한 차단을 해제합니다.`);
-    return await this.blockRepository.delete(blocked.id);
+    await this.blockRepository.delete(blocked.id);
+    return targetUid;
   }
-
+  
   async checkBlocked(senderUid: number, targetUid: number) {
     const result = await this.blockRepository
       .createQueryBuilder('block')
@@ -234,7 +229,11 @@ export class UserService {
       .select(['block.id', 'user.uid', 'blocked.uid'])
       .where('user.uid = :targetUid', { targetUid })
       .andWhere('blocked.uid = :senderUid', { senderUid })
-      .getOne();
+      .getOne()
+      .catch((err) => {
+        Logger.error(err);
+        throw new BadRequestException('Cannot find blocked');
+      });
     if (result)
       return true;
     return false;

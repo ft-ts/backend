@@ -24,7 +24,8 @@ export class UserController {
 
   @Get()
   findMe(@GetUser() user: User) {
-    return this.usersService.findOne(user.uid);
+    const res = this.usersService.findOne(user.uid);
+    return res;
   }
 
   @Patch()
@@ -33,19 +34,9 @@ export class UserController {
     return await this.usersService.updateUser(user, body);
   }
 
-  @Get('all')
-  findAll(@GetUser() user: User) {
-    return this.usersService.findAll();
-  }
-
   @Get('all/except/me')
   findAllExcept(@GetUser() user: User) {
     return this.usersService.findAllExceptMe(user);
-  }
-
-  @Get('channels/:id')
-  findChannelUsers() {
-    return this.usersService.findChannelUsers();
   }
 
   @Get('friends')
@@ -56,40 +47,28 @@ export class UserController {
   @Post('friends')
   async createFriendship(@GetUser() user: User, @Body() body) {
     const { targetUid } = body.data;
-    const res = await this.usersService.createFriendship(user, targetUid).catch((err) => {
-      return err;
-    });
+    const res = await this.usersService.createFriendship(user.uid, targetUid);
     return res;
   }
 
   @Delete('friends')
-  deleteFriendship(@GetUser() user: User, @Body() body) {
+  async deleteFriendship(@GetUser() user: User, @Body() body) {
     const { targetUid } = body;
-    return this.usersService.deleteFriendship(user, targetUid);
-  }
-
-  @Get('block')
-  async findBlocked(@GetUser() user: User) {
-    const result = await this.usersService.findBlocked(user);
-    return result;
-  }
-
-  @Get('block/all')
-  findAllBlocked() {
-    return this.usersService.findAllBlocked();
+    const res =  await this.usersService.deleteFriendship(user, targetUid);
+    return res;
   }
 
   @Post('block')
   async createBlocked(@GetUser() user: User, @Body() body) {
     const { targetUid } = body.data;
-    const res = await this.usersService.createBlocked(user, targetUid);
+    const res = await this.usersService.createBlocked(user.uid, targetUid);
     return res;
   }
 
   @Delete('block')
   async deleteBlocked(@GetUser() user: User, @Body() body) {
     const { targetUid } = body;
-    const res = await this.usersService.deleteBlocked(user, targetUid);
+    const res = await this.usersService.deleteBlocked(user.uid, targetUid);
     return res;
   }
 
