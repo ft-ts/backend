@@ -21,23 +21,24 @@ export class UserService {
     private readonly blockRepository: Repository<Block>,
   ) { }
 
-  async updateUser(user: User, body: Partial<User>) {
+  async updateUser(user: User, body: any) {
+
+    if (!body || !(body.twoFactorAuth || body.name || body.avatar))
+      throw new BadRequestException('Body is undefined');
 
     if (body.uid || body.email)
       throw new BadRequestException('Cannot change uid or email');
 
-    // email, avatar, status 유효성 검사
-
     if (body.name) {
       if (body.name.length < 3 || body.name.length > 10)
         throw new BadRequestException('Name must be between 3 and 10 characters');
-    }
-    
-    const isExist = await this.usersRepository.findOneBy({ name: body.name });
-    if (isExist)
-      return new BadRequestException('Name already exists');
 
-    await this.usersRepository.update({uid: user.uid}, body);
+      const isExist = await this.usersRepository.findOneBy({ name: body.name });
+      if (isExist)
+        return new BadRequestException('Name already exists');
+    }
+
+    await this.usersRepository.update({ uid: user.uid }, body);
     return await this.usersRepository.findOneBy({ uid: user.uid });
   }
 
