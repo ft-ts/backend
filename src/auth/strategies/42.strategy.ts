@@ -22,9 +22,12 @@ export class FTStrategy extends PassportStrategy(Strategy, '42') {
   ) {
     Logger.debug('# FTStrategy validate');
     const { id, login, email, image } = JSON.parse(profile._raw);
-    // console.log('🔥 accessToken', accessToken);
-    // console.log('🔥 refreshToken', refreshToken);
-    // console.log('🔥 profile', JSON.parse(profile._raw).image.versions.medium);
+    console.log('🔥 accessToken', accessToken);
+    console.log('🔥 refreshToken', refreshToken);
+    console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥');
+    console.log('🔥 profile', JSON.stringify(profile, null, 2));
+    console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥');
+    console.log('🔥 profile_raw', JSON.parse(profile._raw));
     
     done(null, {
       uid: id,
