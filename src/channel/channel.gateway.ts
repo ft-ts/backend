@@ -68,29 +68,6 @@ implements OnGatewayConnection, OnGatewayDisconnect{
   /* Channel */
   /* ======= */
 
-  @SubscribeMessage('channel/join')
-  async join(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: {channelId: number, password: string}){
-      let channel: Channel;
-      const user: User | null = await this.channelService.getUserByUid(client.data.uid);
-      if (!user) return ;
-      try {
-        channel = await this.channelService.enterChannel(user, payload);
-      } catch (error) {
-        if (error instanceof NotAuthorizedException) {
-          client.emit('channel/join/fail', { message: error.message });
-        } else if (error instanceof InvalidPasswordException) {
-          client.emit('channel/join/fail', { message: error.message });
-        } else {
-          client.emit('channel/join/fail', { message: error.message });
-        }
-        return ;
-      }
-      await client.join(`channel/channel-${payload.channelId}`);
-      client.emit('channel/join/success', channel);
-  }
-
   @SubscribeMessage('channel/leaveChannel')
   async leaveChannel(
     @ConnectedSocket() client: Socket,
@@ -98,11 +75,11 @@ implements OnGatewayConnection, OnGatewayDisconnect{
   {
     const user: User | null = await this.channelService.getUserByUid(client.data.uid);
     const channel: Channel | null = await this.channelService.getChannelById(payload.channelId);
-    if (!user || !channel) return ;
-    // this.channelService.leaveChannel(user, channel);
+    if (!user || !channel) throw new NotFoundException('User or Channel not found');
+    this.channelService.leaveChannel(user.uid, channel);
     await client.leave(`channel/channel-${payload.channelId}`);
-    this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
-    this.server.emit('update/channelInfo');
+    client.emit('channel/leaveChannel/success', payload.channelId);
+    // this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
   }
 
   /* ==== */
@@ -114,13 +91,13 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     @MessageBody() createMessageDto: CreateMessageDto,
   ) {
     const user: User | null = await this.channelService.getUserByUid(client.data.uid);
-    if (!user) return ;
+    if (!user) throw new NotFoundException('User not found');
     const message = await this.channelService.createMessage(user, createMessageDto);
     const res = {
       id: message.id,
       channel_id: message.channel.id,
       isNotice: message.isNotice,
-      sender_uid: message.sender_uid,
+      sender: message.sender,
       content: message.content,
       timeStamp: message.timeStamp,
     }
@@ -132,7 +109,7 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: {channelId: number},
   ) {
-    this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
+    this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate', payload.channelId);
   }
 
   @SubscribeMessage('channel/chatRoomUpdate')
