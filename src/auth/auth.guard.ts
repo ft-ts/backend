@@ -16,7 +16,9 @@ export class AtGuard implements CanActivate {
       context.getType() === 'http'
         ? context.switchToHttp().getRequest().headers?.authorization?.split('Bearer ')[1]
         : context.switchToWs().getClient().handshake?.auth.token;
+        
 
+    // 토큰이 없거나, 유효하지 않은 토큰일 때
     if (!token || !this.authService.validateAccessToken(token)) {
       Logger.debug('[AtGuard] Invalid token. redirected to /login');
       if (context.getType() === 'ws')
@@ -32,6 +34,16 @@ export class AtGuard implements CanActivate {
     if (!userToken)
       throw new UnauthorizedException('Invalid token');
 
+    // 유효한 토큰인가?
+    const res = await this.authService.isActiveToken(token);
+
+    // 유효하지 않은 토큰일 때
+    if (res === false) {
+      Logger.debug('[AtGuard] token inactive or not valid. redirected to "/login"');
+      context.switchToHttp().getResponse().status(200).json({ redirectUrl: '/login' });
+      return false;
+    }
+    
     // 유저 2fa 설정과 발급된 토큰 설정이 같은가?
     if (userInfo.twoFactorAuth !== userToken.twoFactorAuth) {
 
@@ -39,6 +51,7 @@ export class AtGuard implements CanActivate {
       if (userInfo.twoFactorAuth && _2faFreeUrl.indexOf(context.switchToHttp().getRequest().url) === -1) {
         Logger.debug('[AtGuard] 2fa not checked. redirected to "/login/2fa"');
         context.switchToHttp().getResponse().status(200).json({ redirectUrl: '/login/2fa' });
+        return false;
       }
     }
 
@@ -53,7 +66,6 @@ export class AtGuard implements CanActivate {
     return true;
   }
 }
-
 
 const _2faFreeUrl = [
   '/api/login/2fa',

@@ -42,7 +42,7 @@ export class UserController {
   @Get('friends')
   async findFriends(@GetUser() user: User) {
     return await this.usersService.findFriends(user);
-  }3
+  }
 
   @Post('friends')
   async createFriendship(@GetUser() user: User, @Body() body) {

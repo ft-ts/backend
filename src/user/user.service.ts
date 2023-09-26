@@ -22,9 +22,10 @@ export class UserService {
   ) { }
 
   async updateUser(user: User, body: Partial<User>) {
+    console.log('🤬 body', body);
 
-    if (!body || !(body.twoFactorAuth || body.name || body.avatar))
-      throw new BadRequestException('Body is undefined');
+    if (!body || (body.twoFactorAuth === undefined && body.name === undefined && body.avatar === undefined))
+      throw new BadRequestException('Body is empty');
 
     if (body.uid || body.email)
       throw new BadRequestException('Cannot change uid or email');
@@ -100,6 +101,7 @@ export class UserService {
       ladder_wins: user.ladder_wins,
       ladder_losses: user.ladder_losses,
       status: user.status,
+      twoFactorAuth: user.twoFactorAuth,
       blocked: blocked,
     }
     return partialUser;
