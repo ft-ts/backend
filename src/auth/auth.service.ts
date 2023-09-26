@@ -31,17 +31,6 @@ export class AuthService {
     }
   }
 
-  validateRefreshToken(jwtToken: any) {
-    try {
-      const payload: any = this.jwtService.verify(jwtToken, { secret: process.env.RT_SECRET });
-      return payload;
-    }
-    catch (err) {
-      Logger.error(`# validateRefreshToken: invalid token`, err);
-      return null;
-    }
-  }
-
   async validateSocket(client: Socket): Promise<boolean> {
     const token = client.handshake.auth.token;
     if (token === undefined || token === null) {

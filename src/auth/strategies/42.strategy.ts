@@ -15,15 +15,13 @@ export class FTStrategy extends PassportStrategy(Strategy, '42') {
   }
 
   async validate(
-    accessToken: string, // ? 왜 필요?
+    accessToken: string,
     refreshToken: string,
     profile: any,
     done: VerifiedCallback,
   ) {
     Logger.debug('# FTStrategy validate');
     const { id, login, email, image } = JSON.parse(profile._raw);
-    // console.log('🔥 accessToken', accessToken);
-    // console.log('🔥 refreshToken', refreshToken);
     // console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥');
     // console.log('🔥 profile', JSON.stringify(profile, null, 2));
     // console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥');
