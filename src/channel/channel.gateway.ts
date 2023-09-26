@@ -16,6 +16,9 @@ import { User } from 'src/user/entities/user.entity';
 import { UseGuards } from '@nestjs/common';
 import { AtGuard } from 'src/auth/auth.guard';
 import { Channel } from './entities/channel.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Block } from 'src/user/entities/block.entity';
+import { Repository } from 'typeorm';
 
 @UseGuards(AtGuard)
 @WebSocketGateway({
@@ -29,6 +32,8 @@ implements OnGatewayConnection, OnGatewayDisconnect{
   constructor(
     private readonly channelService: ChannelService,
     private readonly socketService: SocketService,
+    @InjectRepository(Block)
+    private readonly blockRepository: Repository<Block>,
   ) { }
 
   @WebSocketServer()

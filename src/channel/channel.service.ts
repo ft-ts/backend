@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MoreThan, Not, Repository } from 'typeorm';
+import { In, MoreThan, Not, Repository } from 'typeorm';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import * as bcrypt from 'bcrypt';
 import { ChannelMode } from './enum/channelMode.enum';
@@ -19,6 +19,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { ChannelUser } from './entities/channelUser.entity';
 import { ChannelPasswordDto } from './dto/channel-password.dto';
 import { Logger } from '@nestjs/common';
+import { Block } from 'src/user/entities/block.entity';
 
 @Injectable()
 export class ChannelService {
@@ -33,6 +34,8 @@ export class ChannelService {
     private channelUserRepository: Repository<ChannelUser>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Block)
+    private blockRepository: Repository<Block>,
   ) {}
 
   /* ==== */
@@ -187,14 +190,14 @@ export class ChannelService {
     await this.channelUserRepository.save(channelUser);
     channel.memberCnt = await this.getMemberCnt(channel);
     await this.channelRepository.save(channel);
-    const patialChannel: Partial<Channel> = {
+    const partialChannel: Partial<Channel> = {
       id: channel.id,
       title: channel.title,
       mode: channel.mode,
     };
     const res = {
       user: user,
-      channel: patialChannel as Channel,
+      channel: partialChannel as Channel,
       role: ChannelRole.NORMAL,
       isMember: false,
     };
@@ -207,14 +210,14 @@ export class ChannelService {
       relations: ['channel'],
     });
     if (!res) return null;
-    const patialChannel: Partial<Channel> = {
+    const partialChannel: Partial<Channel> = {
       id: channel.id,
       title: channel.title,
       mode: channel.mode,
     };
     const channelUser = {
       user: user,
-      channel: patialChannel as Channel,
+      channel: partialChannel as Channel,
       role: res.role,
       isMember: true,
     };
@@ -380,9 +383,9 @@ export class ChannelService {
 
   //todo banMember
   async banMember(user: User, payload: { channelId: number, targetUid: number}) {
-    const res = await this.getChannelUser(user.uid, payload.channelId).then((res) => {
+    await this.getChannelUser(user.uid, payload.channelId).then((res) => {
       if (res.role === ChannelRole.NORMAL) throw new NotAuthorizedException('User is not the admin of the channel');
-      return res.user.name;
+      return res;
     }).catch((err) => {
       Logger.error(err);
       return err;
@@ -414,7 +417,7 @@ export class ChannelService {
     await this.channelUserRepository.delete(targetChannelUser.id);
     channel.memberCnt = await this.getMemberCnt(channel);
     await this.channelRepository.save(channel);
-    return res;
+    return targetUser.name;
   }
 
   //todo unbanMember
@@ -443,15 +446,15 @@ export class ChannelService {
 
   // todo kick member
   async kickMember(user: User, payload : { channelId: number, targetUid: number}) {
-    const res = await this.getChannelUser(user.uid, payload.channelId).then((res) => {
-      return res.user.name;
+    await this.getChannelUser(user.uid, payload.channelId).then((res) => {
+      return res;
     }).catch((err) => {
       Logger.error(err);
       return null;
     });
     const targetChannelUser = await this.getChannelUser(payload.targetUid, payload.channelId).then((res) => {
-      return res;}
-    ).catch((err) => {
+      return res;
+    }).catch((err) => {
       Logger.error(err);
       return null;
     });
@@ -459,7 +462,7 @@ export class ChannelService {
     await this.channelUserRepository.remove(targetChannelUser);
     channel.memberCnt = await this.getMemberCnt(channel);
     await this.channelRepository.save(channel);
-    return res;
+    return targetChannelUser.user.name;
   }
 
   async inviteMember(payload: {channelId: number, targetUid: number}){
@@ -517,10 +520,18 @@ export class ChannelService {
     const channelUser = await this.channelUserRepository.findOne({
       where: { user: { uid: user.uid }, channel: { id: channel.id } },
     })
+    const blockedUsers = await this.blockRepository.find({
+      where: { user: { uid: user.uid } },
+      relations: ['blocked'],
+    });
+    const blockedUserIds = blockedUsers.map((blockedUser) => blockedUser.blocked.uid);
     const messages = await this.cmRepository.find({
       where: {
         channel: { id: channel.id },
-        timeStamp: MoreThan(channelUser?.joined_at), // joined_at 이후의 메시지만 가져옴
+        timeStamp: MoreThan(channelUser?.joined_at),
+        sender: {
+          uid: Not(In(blockedUserIds)),
+        },
       },
       order: { timeStamp: 'ASC' },
       relations: ['sender'],

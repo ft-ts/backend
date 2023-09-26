@@ -10,6 +10,7 @@ import { ChannelUser } from './entities/channelUser.entity';
 import { ChannelController } from './channel.controller';
 import { AtGuard } from 'src/auth/auth.guard';
 import { SocketModule } from 'src/common/module/socket.module';
+import { Block } from 'src/user/entities/block.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SocketModule } from 'src/common/module/socket.module';
       ChannelUser,
       Cm,
       User,
+      Block
     ]),
     AuthModule,
     SocketModule
