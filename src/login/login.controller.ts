@@ -20,8 +20,10 @@ export class LoginController {
   @UseGuards(AuthGuard('42'))
   async redirect(@GetUser() user: User, @Res() res: Response) {
     const { accessToken, redirectUrl } = await this.loginService.validateUser(user);
-    res.cookie('accessToken', accessToken, { sameSite: 'strict' }); // sameSite : 동일한 출처만 허용 (port, protocol, host가 같아야함)
-    res.header('Cache-Control', 'no-store');
+    if (accessToken) {
+      res.cookie('accessToken', accessToken, { sameSite: 'strict' }); // sameSite : 동일한 출처만 허용 (port, protocol, host가 같아야함)
+      res.header('Cache-Control', 'no-store');
+    }
     const url = `http://${process.env.SERVER_IP}:${process.env.FRONT_PORT}/${redirectUrl}`;
     res.status(302).redirect(url);
   }

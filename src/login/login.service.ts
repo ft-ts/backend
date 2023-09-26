@@ -33,6 +33,14 @@ export class LoginService {
 
       if (existUser) {
         let redirectUrl = '/main';
+
+        // 이미 접속중이면 로그인 불가
+        if (existUser.status !== UserStatus.OFFLINE) {
+          Logger.warn('# User Found! But Already Logged In');
+          redirectUrl = '/login?error=alreadyLoggedIn';
+          return { accessToken: null, redirectUrl };
+        }
+
         if (existUser.twoFactorAuth) {
           Logger.warn('# User Found! But Two Factor Auth is Enabled');
           redirectUrl = '/login/2fa';
