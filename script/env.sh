@@ -29,6 +29,4 @@ echo ""
 echo "https://profile.intra.42.fr/oauth/applications"
 echo ""
 
-
-
 rm -rf env

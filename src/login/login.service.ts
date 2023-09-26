@@ -33,7 +33,7 @@ export class LoginService {
     };
   }
 
-  async validateUser(userInfo): Promise<{tokens: Tokens, redirectUrl: string}> {
+  async validateUser(userInfo: Partial<User>): Promise<{tokens: Tokens, redirectUrl: string}> {
     Logger.debug('# AuthService validateUser');
 
     try {
