@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Res, Req, Query } from '@nestjs/common';
 import { LoginService } from './login.service';
 import { User } from 'src/user/entities/user.entity';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { GetUser } from 'src/common/decorators';
 import { AuthGuard } from '@nestjs/passport';
 import { AtGuard } from 'src/auth/auth.guard';
@@ -28,8 +28,8 @@ export class LoginController {
 
   @Get('/logout')
   @UseGuards(AtGuard)
-  async logout(@GetUser() user: User) {
-    return await this.loginService.logout(user);
+  async logout(@GetUser() user: User, @Req() req: Request) {
+    return await this.loginService.logout(user, req.headers.authorization);
   }
 
   @Get('/2fa')
@@ -40,8 +40,8 @@ export class LoginController {
 
   @Post('/2fa')
   @UseGuards(AtGuard)
-  async validate2FA(@GetUser() user: User, @Body() body, @Res() res: Response) {
-    const accessToken = await this.loginService.validate2FA(user, body.code);
+  async validate2FA(@GetUser() user: User, @Body() body, @Req() req: Request, @Res() res: Response) {
+    const accessToken = await this.loginService.validate2FA(user, body.code, req.headers.authorization);
     if (accessToken) {
       res.cookie('accessToken', accessToken);
       res.header('Cache-Control', 'no-store');

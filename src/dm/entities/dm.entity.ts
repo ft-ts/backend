@@ -7,7 +7,6 @@ import {
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 
-
 @Entity({ name: 'dm' })
 export class DM extends BaseEntity {
   @PrimaryGeneratedColumn()

@@ -5,12 +5,17 @@ import { UserStatus } from 'src/user/enums/userStatus.enum';
 import { authenticator } from 'otplib';
 import { LoginRepository } from './login.repository';
 import * as QRCode from 'qrcode';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Token, TokenStatus } from 'src/auth/entities/token.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class LoginService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly loginRepository: LoginRepository,
+    @InjectRepository(Token)
+    private tokenRepository: Repository<Token>,
   ) { }
 
   onModuleInit() {
@@ -33,6 +38,9 @@ export class LoginService {
           redirectUrl = '/login/2fa';
         }
         const accessToken = await this.jwtService.signAsync({ uid: existUser.uid, email: existUser.email, twoFactorAuth: false });
+        this.tokenRepository.save({ accessToken });
+        // const tokenToSave = this.tokenRepository.create({ accessToken });
+        // this.tokenRepository.save(tokenToSave);
         return { accessToken, redirectUrl };
       }
 
@@ -49,6 +57,7 @@ export class LoginService {
       await this.loginRepository.save(newUser);
 
       const accessToken = await this.jwtService.signAsync({ uid: newUser.uid, email: newUser.email, twoFactorAuth: false });
+      this.tokenRepository.save({ accessToken });
       return { accessToken, redirectUrl: '/login/signup' };
 
     } catch (error) {
@@ -57,17 +66,17 @@ export class LoginService {
     }
   }
 
-  // 작동하는지 확인 필요
-  async logout(user: User): Promise<{ message: string }> {
+  async logout(user: User, prevToken: string): Promise<{ message: string }> {
     try {
       const _user: User = await this.loginRepository.findOneBy({
-        id: user.id,
-        hashedRt: user.hashedRt,
+        uid: user.uid,
       });
       await this.loginRepository.update(_user.id, {
-        hashedRt: null,
         status: UserStatus.OFFLINE,
       });
+      const res = await this.tokenRepository.update({ accessToken: prevToken.split('Bearer ')[1] }, { status: TokenStatus.INACTIVE });
+      console.log('🥰 res', res);
+      
     } catch (error) {
       Logger.debug('# AuthService logout Error', error);
       throw new InternalServerErrorException('Something went wrong :(');
@@ -101,11 +110,17 @@ export class LoginService {
     }
   }
 
-  async validate2FA(userInfo: User, code: string) {
+  async validate2FA(userInfo: User, code: string, prevToken: string) {
     const user = await this.loginRepository.findOneBy({ uid: userInfo.uid });
     if (+code !== +authenticator.generate(user.qrSecret))
       return null;
 
-    return await this.jwtService.signAsync({ uid: user.uid, email: user.email, twoFactorAuth: true });
+    // 이전 토큰 비활성화
+    await this.tokenRepository.update({ accessToken: prevToken.split('Bearer ')[1] }, { status: TokenStatus.INACTIVE });
+
+    // 새 토큰 저장 & 전송
+    const accessToken = await this.jwtService.signAsync({ uid: user.uid, email: user.email, twoFactorAuth: true });
+    this.tokenRepository.save({ accessToken });
+    return accessToken;
   }
 }
