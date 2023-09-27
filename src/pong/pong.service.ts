@@ -39,6 +39,7 @@ export class PongService{
   ){
     Logger.log(`[🏓PongService] joinLadder ${client.data.uid}`);
     const index: number = this._ladderQueue.indexOf(client);
+    
     if (index === -1){
       this._ladderQueue.push(client);
     }

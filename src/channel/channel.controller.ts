@@ -136,8 +136,6 @@ export class ChannelController {
     @Body() payload: {channelId: number, targetUid: number}
   ){
     const res = await this.channelService.grantAdmin(user, payload);
-    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
-    targetUserSocket.emit('channel/changeGranted', { channelId: payload.channelId, granted: ChannelRole.ADMIN});
     return res;
   }
 
@@ -147,8 +145,6 @@ export class ChannelController {
     @Body() payload: {channelId: number, targetUid: number}
   ){
     const res = await this.channelService.revokeAdmin(user, payload);
-    const targetUserSocket = await this.socketService.getSocket(payload.targetUid);
-    targetUserSocket.emit('channel/changeGranted', { channelId: payload.channelId, granted: ChannelRole.NORMAL});
     return res;
   }
 
@@ -180,6 +176,15 @@ export class ChannelController {
     const res = await this.channelService.joinChannel(user.uid, payload);
     const socket = await this.socketService.getSocket(user.uid);
     await socket.join(`channel/channel-${payload.channelId}`);
+    return res;
+  }
+
+  @Post('/leave')
+  async postChannelLeave(
+    @GetUser() user : User,
+    @Body() payload: {channelId: number}
+  ){
+    const res = await this.channelService.leave(user.uid, payload.channelId);
     return res;
   }
 

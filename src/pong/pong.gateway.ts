@@ -6,7 +6,6 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
 import { PongService } from './pong.service';
@@ -15,6 +14,7 @@ import { MatchType } from './pong.enum';
 import { SocketService } from 'src/common/service/socket.service';
 import { Logger } from '@nestjs/common';
 import { User } from 'src/user/entities/user.entity';
+import { UserStatus } from 'src/user/enums/userStatus.enum';
 
 @WebSocketGateway({
   cors: {
@@ -32,6 +32,9 @@ implements OnGatewayConnection ,OnGatewayDisconnect
     Logger.debug('PongGateway constructor');
   }
 
+  @WebSocketServer()
+  server: Server;
+
   handleConnection(client: any) {
     Logger.debug(`[🏓PongGateway] ${client.data.uid} connected`);
     this.pongService.handleConnection(client);
@@ -46,22 +49,21 @@ implements OnGatewayConnection ,OnGatewayDisconnect
   @SubscribeMessage('pong/ladder/join')
   async joinLadder(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any,
   ){
+    await this.gameService.changeStatus(client, 2);
+    this.server.emit('update/userInfo', {uid: client.data.uid}) 
     this.pongService.joinLadder(client);
   }
 
   @SubscribeMessage('pong/ladder/cancle')
   async cancleLadder(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any,
   ){
+    await this.gameService.changeStatus(client, 0);
+    this.server.emit('update/userInfo', {uid: client.data.uid})
     this.pongService.cancleLadder(client);
   }
 
-  /*
-  ** @payload : { uid: number }
-  */
   @SubscribeMessage('pong/match/invite')
   async inviteMatch(
     @ConnectedSocket() client: Socket,
@@ -72,9 +74,15 @@ implements OnGatewayConnection ,OnGatewayDisconnect
       Logger.debug(`[PongGateway inviteMatch] ${payload.uid} is not connected`);
       return ;
     }
-    Logger.debug(`[PongGateway inviteMatch] ${client.data.uid} invite ${payload.uid}`);
-    const home : User = await this.pongService.getUserInfo(client.data.uid);
-    const away : User = await this.pongService.getUserInfo(payload.uid);
+    const home : Partial<User> = await this.pongService.getUserInfo(client.data.uid);
+    const away : Partial<User> = await this.pongService.getUserInfo(payload.uid);
+    if (away.status !== UserStatus.ONLINE){
+      return ;
+    }
+    await this.gameService.changeStatus(client, 2);
+    this.server.emit('update/userInfo', {uid: client.data.uid});
+    await this.gameService.changeStatus(opponent, 2);
+    this.server.emit('update/userInfo', {uid: opponent.data.uid});
     opponent.emit('pong/match/invite', {user: home});
     client.emit('pong/match/invite/wating', {user: away});
   }
@@ -86,13 +94,16 @@ implements OnGatewayConnection ,OnGatewayDisconnect
   ){
     const opponent: Socket | null = await this.socketService.getSocket(payload.uid);
     if (opponent === null){
-      Logger.debug(`[PongGateway cancleMatch] ${payload.uid} is not connected`);
       return ;
     }
-    const home : User = await this.pongService.getUserInfo(client.data.uid);
-    const away : User = await this.pongService.getUserInfo(payload.uid);
-    opponent.emit('pong/match/invite/cancle', {user: home});
-    client.emit('pong/match/invite/cancle', {user: away});
+    await this.gameService.changeStatus(client, 0);
+    this.server.emit('update/userInfo', {uid: client.data.uid});
+    await this.gameService.changeStatus(opponent, 0);
+    this.server.emit('update/userInfo', {uid: opponent.data.uid});
+    // const home : Partial<User> = await this.pongService.getUserInfo(client.data.uid);
+    // const away : Partial<User> = await this.pongService.getUserInfo(payload.uid);
+    opponent.emit('pong/match/invite/cancle');
+    client.emit('pong/match/invite/cancle');
   }
 
   /*
@@ -123,6 +134,10 @@ implements OnGatewayConnection ,OnGatewayDisconnect
     }
     opponent.emit('pong/match/invite/reject', client.data.uid);
     client.emit('pong/init');
+    await this.gameService.changeStatus(client, 0);
+    this.server.emit('update/userInfo', {uid: client.data.uid});
+    await this.gameService.changeStatus(opponent, 0);
+    this.server.emit('update/userInfo', {uid: opponent.data.uid});
   }
   
   @SubscribeMessage('pong/game/init')
