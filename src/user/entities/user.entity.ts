@@ -40,9 +40,6 @@ export class User {
   @Column({ name: 'status', default: UserStatus.OFFLINE })
   status: UserStatus;
 
-  @Column({ name: 'hashed_rt', nullable: true })
-  hashedRt: string;
-
   @Column({ name: 'qr_secret', nullable: false })
   qrSecret: string;
 

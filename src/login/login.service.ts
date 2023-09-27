@@ -5,35 +5,25 @@ import { UserStatus } from 'src/user/enums/userStatus.enum';
 import { authenticator } from 'otplib';
 import { LoginRepository } from './login.repository';
 import * as QRCode from 'qrcode';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Token, TokenStatus } from 'src/auth/entities/token.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class LoginService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly loginRepository: LoginRepository,
+    @InjectRepository(Token)
+    private tokenRepository: Repository<Token>,
   ) { }
-  
+
   onModuleInit() {
     this.loginRepository.update({}, { status: UserStatus.OFFLINE });
     Logger.debug('[AuthService onModuleInit] All Users Status => OFFLINE');
   }
 
-  async getTokens({ uid, email, twoFactorAuth }): Promise<Tokens> {
-    Logger.debug('# AuthService getTokens');
-    const tokens = await Promise.all([
-      this.jwtService.signAsync({ uid, email, twoFactorAuth }),
-      this.jwtService.signAsync(
-        { uid, email },
-        { secret: process.env.RT_SECRET, expiresIn: process.env.RT_EXPIRESIN },
-      ),
-    ]);
-    return {
-      accessToken: tokens[0],
-      refreshToken: tokens[1],
-    };
-  }
-
-  async validateUser(userInfo: Partial<User>): Promise<{tokens: Tokens, redirectUrl: string}> {
+  async validateUser(userInfo: Partial<User>): Promise<{ accessToken: string, redirectUrl: string }> {
     Logger.debug('# AuthService validateUser');
 
     try {
@@ -43,18 +33,28 @@ export class LoginService {
 
       if (existUser) {
         let redirectUrl = '/main';
+
+        // 이미 접속중이면 로그인 불가
+        if (existUser.status !== UserStatus.OFFLINE) {
+          Logger.warn('# User Found! But Already Logged In');
+          redirectUrl = '/login?error=alreadyLoggedIn';
+          return { accessToken: null, redirectUrl };
+        }
+
         if (existUser.twoFactorAuth) {
           Logger.warn('# User Found! But Two Factor Auth is Enabled');
           redirectUrl = '/login/2fa';
         }
-        const tokens: Tokens = await this.getTokens({ uid: existUser.uid, email: existUser.email, twoFactorAuth: false });
-        await this.updateRefreshToken(existUser, tokens.refreshToken);
-        return {tokens, redirectUrl};
+        const accessToken = await this.jwtService.signAsync({ uid: existUser.uid, email: existUser.email, twoFactorAuth: false });
+        this.tokenRepository.save({ accessToken });
+        // const tokenToSave = this.tokenRepository.create({ accessToken });
+        // this.tokenRepository.save(tokenToSave);
+        return { accessToken, redirectUrl };
       }
 
       // 새 유저
       Logger.warn('# User Not Found! Creating New User...');
-      
+
       const newUser: User = this.loginRepository.create({
         uid: userInfo.uid,
         name: userInfo.name,
@@ -63,9 +63,10 @@ export class LoginService {
         qrSecret: authenticator.generateSecret(),
       });
       await this.loginRepository.save(newUser);
-      const tokens: Tokens = await this.getTokens({ uid: newUser.uid, email: newUser.email, twoFactorAuth: false });
-      await this.updateRefreshToken(newUser, tokens.refreshToken);
-      return {tokens, redirectUrl: '/login/signup'};
+
+      const accessToken = await this.jwtService.signAsync({ uid: newUser.uid, email: newUser.email, twoFactorAuth: false });
+      this.tokenRepository.save({ accessToken });
+      return { accessToken, redirectUrl: '/login/signup' };
 
     } catch (error) {
       Logger.debug('# AuthService validateUser Error', error);
@@ -73,51 +74,22 @@ export class LoginService {
     }
   }
 
-  async updateRefreshToken(user: User, hashedRt: string): Promise<void> {
-    Logger.debug('# AuthService updateRefreshToken');
-
-    try {
-      const _user = await this.loginRepository.findOneBy({
-        id: user.id, // uid로 변경?
-      });
-      if (!_user) throw new ForbiddenException('Access Denied (User Not Found)');
-      await this.loginRepository.update(user.id, { hashedRt });
-    } catch (error) {
-      Logger.debug('# AuthService updateRefreshToken Error');
-      throw new InternalServerErrorException('Something went wrong at updateRefreshToken :(');
-    }
-  }
-
-  // 작동하는지 확인 필요
-  async logout(user: User): Promise<{ message: string }> {
+  async logout(user: User, prevToken: string): Promise<{ message: string }> {
     try {
       const _user: User = await this.loginRepository.findOneBy({
-        id: user.id,
-        hashedRt: user.hashedRt,
+        uid: user.uid,
       });
       await this.loginRepository.update(_user.id, {
-        hashedRt: null,
         status: UserStatus.OFFLINE,
       });
+      const res = await this.tokenRepository.update({ accessToken: prevToken.split('Bearer ')[1] }, { status: TokenStatus.INACTIVE });
+      console.log('🥰 res', res);
+      
     } catch (error) {
       Logger.debug('# AuthService logout Error', error);
       throw new InternalServerErrorException('Something went wrong :(');
     }
     return { message: 'Logout Success' };
-  }
-  
-  // 작동하는지 확인 필요
-  async refreshTokens(user: User): Promise<Tokens> {
-    Logger.debug('# AuthService refreshTokens');
-    const _user = await this.loginRepository.findOneBy({
-      uid: user.uid,
-    });
-    if (!_user) throw new ForbiddenException('Access Denied (User Not Found)');
-    if (_user.hashedRt != _user.hashedRt)
-      throw new ForbiddenException('Access Denied (Refresh Token Mismatch)');
-    const tokens: Tokens = await this.getTokens(_user);
-    await this.updateRefreshToken(_user, tokens.refreshToken);
-    return tokens;
   }
 
   async generateData(otpURI): Promise<string> {
@@ -146,69 +118,17 @@ export class LoginService {
     }
   }
 
-  async validate2FA(userInfo: User, code: string) {
+  async validate2FA(userInfo: User, code: string, prevToken: string) {
     const user = await this.loginRepository.findOneBy({ uid: userInfo.uid });
     if (+code !== +authenticator.generate(user.qrSecret))
       return null;
 
-    return this.getTokens({ uid: user.uid, email: user.email, twoFactorAuth: true });
-  }
+    // 이전 토큰 비활성화
+    await this.tokenRepository.update({ accessToken: prevToken.split('Bearer ')[1] }, { status: TokenStatus.INACTIVE });
 
-  /**
-   * 🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮
-   * 
-   * For TEST !!!!!!!!
-   * 
-   * 🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮🤮
-   */
-  async getDemoTokens(userInfo: User): Promise<Tokens> {
-    const { uid, email, twoFactorAuth } = userInfo;
-    const tokens = await Promise.all([
-      this.jwtService.signAsync({ uid, email, twoFactorAuth }, { expiresIn: '12h' }),
-      this.jwtService.signAsync(
-        { uid, email },
-        { secret: process.env.RT_SECRET, expiresIn: '30d' },
-      ),
-    ]);
-
-    return {
-      accessToken: tokens[0],
-      refreshToken: tokens[1],
-    };
-  }
-
-  async loginByDemoUser(userInfo: User): Promise<Tokens> {
-    Logger.debug('# AuthService loginBy "🤮Demo" User');
-
-    try {
-      const existUser: User = await this.loginRepository.findOneBy({
-        uid: userInfo.uid,
-      });
-
-      if (existUser) {
-        const tokens: Tokens = await this.getTokens(existUser);
-        await this.updateRefreshToken(existUser, tokens.refreshToken);
-
-        return tokens;
-      }
-      Logger.warn('# User Not Found! Creating New "🤮Demo" User...');
-
-      const newUser: User = this.loginRepository.create({
-        uid: userInfo.uid,
-        name: userInfo.name,
-        email: userInfo.email,
-        avatar: userInfo.avatar,
-        qrSecret: authenticator.generateSecret(),
-      });
-
-      await this.loginRepository.save(newUser);
-      const tokens: Tokens = await this.getTokens(newUser);
-      await this.updateRefreshToken(newUser, tokens.refreshToken);
-
-      return tokens;
-    } catch (error) {
-      Logger.debug('# AuthService loginBy "🤮Demo" User Error', error);
-      throw new InternalServerErrorException('Something went wrong at validate "🤮Demo" User :(');
-    }
+    // 새 토큰 저장 & 전송
+    const accessToken = await this.jwtService.signAsync({ uid: user.uid, email: user.email, twoFactorAuth: true });
+    this.tokenRepository.save({ accessToken });
+    return accessToken;
   }
 }

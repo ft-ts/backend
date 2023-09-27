@@ -7,6 +7,7 @@ import { Socket } from 'socket.io';
 import { User } from 'src/user/entities/user.entity';
 import { UserStatus } from 'src/user/enums/userStatus.enum';
 import { Repository } from 'typeorm';
+import { Token, TokenStatus } from './entities/token.entity';
 
 @Injectable()
 export class AuthService {
@@ -14,6 +15,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Token)
+    private tokenRepository: Repository<Token>,
   ) { }
 
   async getUserInfo (uid: number) {
@@ -27,17 +30,6 @@ export class AuthService {
     }
     catch (err) {
       Logger.error(`# validateToken: invalid token`, err);
-      return null;
-    }
-  }
-
-  validateRefreshToken(jwtToken: any) {
-    try {
-      const payload: any = this.jwtService.verify(jwtToken, { secret: process.env.RT_SECRET });
-      return payload;
-    }
-    catch (err) {
-      Logger.error(`# validateRefreshToken: invalid token`, err);
       return null;
     }
   }
@@ -63,8 +55,7 @@ export class AuthService {
     }
     if (user.status === UserStatus.OFFLINE && toOnline === true) {
       user.status = UserStatus.ONLINE;
-      // await this.userRepository.update(user.id, { status: user.status });
-      await this.userRepository.save(user);
+      await this.userRepository.update(user.id, { status: user.status });
       client.emit('update/userInfo', { uid: user.uid });
       Logger.warn(`[AuthService handleUserStatus] ${user.name}(${user.uid}) is now ${user.status}`);
     }
@@ -75,5 +66,13 @@ export class AuthService {
       Logger.warn(`[AuthService handleUserStatus] ${user.name}(${user.uid}) is now ${user.status}`);
     }
     return true;
+  }
+
+  async isActiveToken(accessToken: string): Promise<boolean> {
+    const res = await this.tokenRepository.findOneBy({ accessToken });
+    if (res === undefined || res === null)
+      return false;
+    if (res.status === TokenStatus.ACTIVE)
+      return true;
   }
 }
