@@ -104,8 +104,6 @@ export class UserService {
       twoFactorAuth: user.twoFactorAuth,
       blocked: blocked,
     }
-    console.log('status', user.status);
-    Logger.error('status :', user.status)
     return partialUser;
   }
 
