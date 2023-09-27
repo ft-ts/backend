@@ -102,6 +102,8 @@ export class UserService {
       status: user.status,
       blocked: blocked,
     }
+    console.log('status', user.status);
+    Logger.error('status :', user.status)
     return partialUser;
   }
 

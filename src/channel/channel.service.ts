@@ -224,20 +224,25 @@ export class ChannelService {
     return channelUser;
   }
 
-  async leaveChannel(userUid: number, channel: Channel) {
-    const channelUserToDelete = await this.getChannelUser(userUid, channel.id);
-    if (channelUserToDelete) {
-      if (channelUserToDelete.role === ChannelRole.OWNER) {
-        await this.changeOwner(channel.id);
+  async leave(userUid: number, channelId: number) {
+    const channel = await this.getChannelById(channelId);
+    const user = await this.getChannelUser(userUid, channelId);
+    if (!channel || !user) throw new NotFoundException('User or Channel not found');
+    await this.channelUserRepository.remove(user);
+    if (channel.memberCnt === 1) {
+      await this.cmRepository.delete({ channel: { id: channel.id } });
+      await this.channelRepository.remove(channel);
+      return { isDeleted: true, channelId: channel.id, targetUser: null};
+    } else {
+      let targetUserUid = null;
+      if (user.role === ChannelRole.OWNER) {
+        targetUserUid = await this.changeOwner(channel.id);
       }
-      await this.channelUserRepository.remove(channelUserToDelete);
-      // await this.userRepository.save(user);
+      console.log('targetUser', targetUserUid);
+      
       channel.memberCnt = await this.getMemberCnt(channel);
       await this.channelRepository.save(channel);
-      if (await this.getMemberCnt(channel) === 0) {
-        await this.cmRepository.delete({ channel: { id: channel.id } });
-        await this.channelRepository.remove(channel);
-      }
+      return { isDeleted: false, channelId: channel.id, targetUid: targetUserUid};
     }
   }
 
@@ -326,12 +331,15 @@ export class ChannelService {
   }
 
 
-  private async changeOwner(channelId: number): Promise<void> {
+  private async changeOwner(channelId: number): Promise<number | null> {
     const members = await this.getChannelMembers(channelId);
-    if (members[1]) {
-      members[1].role = ChannelRole.OWNER;
-      await this.channelUserRepository.save(members[1]);
+    console.log(members[0]);
+    if (members[0]) {
+      members[0].role = ChannelRole.OWNER;
+      await this.channelUserRepository.save(members[0]);
+      return members[0].user.uid;
     }
+    return null;
   }
 
   // return exception
@@ -492,7 +500,7 @@ export class ChannelService {
   /* ==== */
 
   async createMessage(user: User, createMessageDto: CreateMessageDto): Promise<Cm | undefined> {
-    const channel = await this.validateChannelAndMember(user, createMessageDto.channelId);
+    const channel = await this.getChannelById(createMessageDto.channelId);
     if (await this.isMutedMember(user, channel)) {
       throw new NotAuthorizedException('You are muted');
     }

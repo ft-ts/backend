@@ -3,7 +3,7 @@ export const gameConstants = {
   canvasHeight: 500,
   gameInterval: 1000/30,
   maxScore: 2,
-  ballSpeed: 10,
+  ballSpeed: 5,
 };
   
 export const ballConstatns = {
