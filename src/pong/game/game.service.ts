@@ -44,13 +44,7 @@ export class GameService{
     uid : number,
   ){
     const user : User = await this.pongRepository.getUserEntity(uid);
-    const partialUser : Partial<User> = {
-      uid : user.uid,
-      name : user.name,
-      avatar : user.avatar,
-      status : user.status,
-    }
-    return (partialUser);
+    return (user);
   }
     
   async createGame(
@@ -95,7 +89,8 @@ export class GameService{
     const readyStatus = this._readyStatus.get(payload.matchID);
     const gameInfo : GameInfo = this._matchInfo.get(payload.matchID).gameInfo;
     
-    await this.pongRepository.updateUserStatus(client.data.uid, UserStatus.IN_GAME);
+    const user : User = await this.pongRepository.getUserEntity(client.data.uid);
+    this.pongRepository.updateUserStatus(user, UserStatus.IN_GAME);
     if (client.data.uid === matchInfo.home.data.uid){
       client.emit('pong/game/start', {
         home : gameInfo.home_paddle.toDto(),
@@ -110,28 +105,21 @@ export class GameService{
         ball : gameInfo.ball.toDto()});
       readyStatus.away = true;
     }
-    const timeOut = setTimeout(() => {
-      if (readyStatus.home && !readyStatus.away){
-        gameInfo.away_paddle.setScore(-1);
-      } else if (!readyStatus.home && readyStatus.away){
-        gameInfo.home_paddle.setScore(-1);
-      }
+    if (readyStatus.home && readyStatus.away){
       this.startGame(payload.matchID);
-    }, 1000);
+    }
   }
 
   async startGame(
     matchID: string,
   ){
-    console.log('startGame');
     const matchInfo: MatchInfo = this._matchInfo.get(matchID);
     Logger.log(`[🏓GameService] startGame ${matchInfo.match_id}`);
     this._gameLoop = this._gameLoop.bind(this);
-    matchInfo.interval = setInterval(
-      this._gameLoop,
-      gameConstants.gameInterval,
-      matchInfo,
-    )
+    matchInfo.interval = setInterval(() => {
+      this._gameLoop(matchInfo);
+    }
+    , gameConstants.gameInterval);
   }
 
   async keyEvent(
@@ -141,14 +129,13 @@ export class GameService{
     const matchInfo : MatchInfo = this._matchInfo.get(payload.matchID);
     if (matchInfo === undefined || matchInfo === null) return (false);
     const player : Paddle = client.data.uid === matchInfo.home.data.uid ? matchInfo.gameInfo.home_paddle : matchInfo.gameInfo.away_paddle;
+
     player.update(payload.key);
   }
 
   private async _gameLoop(
     matchInfo: MatchInfo,
   ){
-    console.log('gameLoop');
-    
     const gameInfo : GameInfo = matchInfo.gameInfo;
 
     gameInfo.is_finish = await gameInfo.ball.update();
@@ -207,29 +194,10 @@ export class GameService{
     this.pongRepository.updateUserEntity(winner, winner_elo, loser_elo, true, matchType);
     this.pongRepository.updateUserEntity(loser, loser_elo, winner_elo, false, matchType);
     if (this._socketCheck.get(matchInfo.home.data.uid) === true){
-      console.log('home', home.uid);
-      await this.changeStatus(matchInfo.home, 0);
-      // matchInfo.home.emit('update/userInfo', {uid: home.uid});
+      this.pongRepository.updateUserStatus(home, UserStatus.ONLINE);
     }
     if (this._socketCheck.get(matchInfo.away.data.uid) === true){
-      console.log('away', away.uid);
-      await this.changeStatus(matchInfo.away, 0);
-      // matchInfo.away.emit('update/userInfo', {uid: away.uid});
+      this.pongRepository.updateUserStatus(away, UserStatus.ONLINE);
     }
-  }
-
-  async changeStatus(
-    client : Socket,
-    statusCode : number,
-  ){
-    let status: UserStatus;
-    if (statusCode === 0){
-      status = UserStatus.ONLINE;
-    } else if (statusCode === 1){
-      status = UserStatus.OFFLINE;
-    } else if (statusCode === 2){
-      status = UserStatus.IN_GAME;
-    }
-    await this.pongRepository.updateUserStatus(client.data.uid, status);
   }
 }

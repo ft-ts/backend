@@ -45,7 +45,7 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     
     Logger.debug(`[AppGateway] ${client.data.uid} disconnected`);
     await this.socketService.removeSocket(client.data.uid);
-    await this.authService.handleUserStatus(client.data.uid, false, client);
+    await this.authService.handleUserStatus(client.data.uid, false);
     this.server.emit('update/userConnection', {uid: client.data.uid, status: UserStatus.OFFLINE});
   }
   
@@ -54,7 +54,7 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     @ConnectedSocket() client: Socket,
   ) {
     Logger.debug(`[AppGateway] test123 ${client.data.uid}`);
-    this.server.emit('update/userInfo', {uid: client.data.uid});
+    this.server.emit('update/userInfo');
   }
 
   @SubscribeMessage('update/channelInfo')

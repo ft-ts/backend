@@ -16,7 +16,6 @@ import { User } from 'src/user/entities/user.entity';
 import { UseGuards } from '@nestjs/common';
 import { AtGuard } from 'src/auth/auth.guard';
 import { Channel } from './entities/channel.entity';
-import { ChannelRole } from './enum/channelRole.enum';
 
 @UseGuards(AtGuard)
 @WebSocketGateway({
@@ -72,10 +71,15 @@ implements OnGatewayConnection, OnGatewayDisconnect{
   @SubscribeMessage('channel/leaveChannel')
   async leaveChannel(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: {channelId: number, targetUserUid: number|null})
+    @MessageBody() payload: {channelId: number})
   {
+    const user: User | null = await this.channelService.getUserByUid(client.data.uid);
+    const channel: Channel | null = await this.channelService.getChannelById(payload.channelId);
+    if (!user || !channel) throw new NotFoundException('User or Channel not found');
+    this.channelService.leaveChannel(user.uid, channel);
     await client.leave(`channel/channel-${payload.channelId}`);
-    this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate', {channelId: payload.channelId, targetUserUid: payload.targetUserUid});
+    client.emit('channel/leaveChannel/success', payload.channelId);
+    // this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate');
   }
 
   /* ==== */
@@ -106,24 +110,6 @@ implements OnGatewayConnection, OnGatewayDisconnect{
     @MessageBody() payload: {channelId: number},
   ) {
     this.server.to(`channel/channel-${payload.channelId}`).emit('channel/innerUpdate', payload.channelId);
-  }
-
-  @SubscribeMessage('channel/joinUpdate')
-  async channelJoinUpdate(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: {channelId: number},
-  ) {
-    console.log('joinUpdate');
-    this.server.to(`channel/channel-${payload.channelId}`).emit('channel/joinUpdate', {channelId:payload.channelId});
-  }
-
-  @SubscribeMessage('channel/leaveUpdate')
-  async channelLeaveUpdate(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: {channelId: number, targetUid: number|null, granted: ChannelRole|null},
-  ) {
-    console.log('leaveUpdate');
-    this.server.to(`channel/channel-${payload.channelId}`).emit('channel/leaveUpdate', {channelId:payload.channelId, targetUid: payload.targetUid, granted: payload.granted});
   }
 
   @SubscribeMessage('channel/chatRoomUpdate')

@@ -151,14 +151,16 @@ export class PongRepository{
   }
 
   async updateUserStatus(
-    userUid: number,
+    user: User,
     status: UserStatus,
   ){
-    const user = await this.getUserEntity(userUid);
-    if (user === undefined || user === null) return ;
+    if (user === undefined || user === null) return (false);
     user.status = status;
-    await this.userRepository.save(user).catch((err) => {
+    await this.userRepository.save(user).then(() => {
+      return (true);
+    }).catch((err) => {
       Logger.error(err);
+      return (false);
     });
   }
 }
